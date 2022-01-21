@@ -61,8 +61,18 @@ def main(fi, fm, code_dir):
     }
     code_map = parse_map(fm)
     for i, line in enumerate(fi):
+        # if i > 10000: break
+        # print(f' {i:9}  ', end='')
+        # print(f'Transaction line {i:9}')
+        #
         ctx = prepare_ctx(line, storage, code_map, code_dir)
+        # if code_map.get(ctx['Address']) != 0x418c9d56c1e2eb1f7466538680767178d3bede656157ff88f3f7ca214c04f37d: continue
+        # if code_map.get(ctx['Address']) != 0x53413c38b8692d456854fd748655e4cd72b4130878511d6242f725adea1a80d0: continue
         execute_tx(ctx)
+        # print()
+        # print()
+        # return
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simple EVM-like code execution')

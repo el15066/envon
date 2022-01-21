@@ -94,6 +94,9 @@ def execute_msg(ctx, state):
     else:
         if code:
             lines = code[:-1]
+            # for c in code: print(c)
+            # gather = json.loads(code[-1])
+            # print(ctx)
             debug('---> Executing contract at', hexify(a), 'code hash', hexify(h), 'lines', len(lines))
             ok = execute_with_jumps(ctx, state, lines)
             debug('---> Execution complete, ok', ok)
@@ -188,12 +191,22 @@ def execute_with_jumps(ctx, state, lines):
         warn('line', i, line)
         raise
     #
+    # for i, v in enumerate(regs): debug(f' {i:4} = {v:64x}')
+    # res = [regs.get(i) for i in gather]
+    # debug(hexify(regs))
+    # debug(gather)
+    # debug(hexify(res))
     return True
 
 
 class UnknownValue:
 
+    # def __init__(self, v):
+    #     self.neg = False
+    #     self.v   = v
+
     def __repr__(self):
+        # return f'?({"!" if self.neg else ""}{self.v})'
         return '?'
 
 class JumpTarget:
@@ -217,6 +230,10 @@ class JumpTarget:
 
 def _execute(ctx, state, name, avs):
     if   name == 'PHI':
+        # for a in avs:
+        #     if type(a) is int:
+        #         return a
+        # raise EmptyPHIError()
         return avs[state.phiindex]
         #
     elif name == 'JUMP':
