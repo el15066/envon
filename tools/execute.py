@@ -12,11 +12,11 @@ class hexint(int):
         return '#' + hex(self)[2:]
 
 def hexify(x):
-    if   type(x) is int:   return hexint(x)
-    elif type(x) is tuple: return tuple(hexify(v) for v in x)
-    elif type(x) is list:  return      [hexify(v) for v in x]
-    elif type(x) is dict:  return {k: hexify(v) for k, v in x.items()}
-    else:                  return x
+    if   type(x) is int:      return hexint(x)
+    elif type(x) is tuple:    return tuple(hexify(v) for v in x)
+    elif type(x) is list:     return      [hexify(v) for v in x]
+    elif isinstance(x, dict): return {hexify(k): hexify(v) for k, v in x.items()}
+    else:                     return x
 
 def debug(*args, **kwargs):
     # print(*hexify(args), **kwargs, file=sys.stderr)
@@ -45,6 +45,9 @@ def s256(x):
 def sha3(d):
     return bytes_to_u256(keccak.new(digest_bits=256).update(d).digest())
 
+def is_internal(ctx):
+    return ctx['Caller'] != ctx['Origin']
+
 class UnknownInstructionError(Exception):
     pass
 
@@ -55,6 +58,7 @@ class WarnError(Exception):
     pass
 
 class ExecutionState:
+
     def __init__(self):
         self.gaz      = 10000
         self.phiindex = 0
@@ -63,10 +67,23 @@ class ExecutionState:
         self.mem      = memoryview(bytearray(65536))
         self.mem_modified = False
 
+    def copy(self):
+        raise NotImplementedError # don't use yet
+        r = ExecutionState()
+        r.gaz          = self.gaz
+        r.phiindex     = self.phiindex
+        r.sloads       = self.sloads.copy()
+        r.sstores      = self.sstores.copy()
+        r.mem          = memoryview(bytearray(self.mem))
+        r.mem_modified = self.mem_modified
+        return r
+
+
 def execute_tx(ctx):
+    debug(hexify(ctx['Storage']))
     state = ExecutionState()
     ok    = execute_msg(ctx, state)
-    if ok:
+    if ok is None or ok == True:
         res = set(
             u256_to_bytes(r).hex()
             for r in itertools.chain(state.sloads, state.sstores)
@@ -75,6 +92,7 @@ def execute_tx(ctx):
         if res:
             print(f"Tx {ctx['Block']:8} {ctx['Index']:3} {ctx['Address']:040x}")
             print('\n'.join(res))
+            debug('\n'.join(res))
 
 def execute_msg(ctx, state):
     a = None
@@ -83,13 +101,15 @@ def execute_msg(ctx, state):
         a = ctx['Codeaddr']
         h = ctx['Codemap'][hexint(a)]
         d = ctx['Codedir']
-        with open(f'{d}/h_{h:040x}.evmlike') as fic:
+        with open(f'{d}/h_{h:064x}.evmlike') as fic:
             code = [l[:-1] for l in fic]
     except KeyError as e:
-        warn('No code mapping for contract', hexify(a), repr(e))
+        f = warn if is_internal(ctx) else debug
+        f('No code mapping for contract', f'{a:040x}', repr(e))
         pass
     except FileNotFoundError as e:
-        warn('No code file for contract', hexify(a), 'code hash', hexify(h), repr(e))
+        f = warn if is_internal(ctx) else debug
+        f('No code file for contract', f'{a:040x}', repr(e), f'{d}/h_{h:064x}.evmlike')
         pass
     else:
         if code:
@@ -97,14 +117,14 @@ def execute_msg(ctx, state):
             # for c in code: print(c)
             # gather = json.loads(code[-1])
             # print(ctx)
-            debug('---> Executing contract at', hexify(a), 'code hash', hexify(h), 'lines', len(lines))
+            debug('---> Executing contract at', f'{a:040x}', 'code hash', f'h_{h:064x}', 'lines', len(lines))
             ok = execute_with_jumps(ctx, state, lines)
             debug('---> Execution complete, ok', ok)
             return ok
         else:
-            warn('No code in code file of', hexify(h))
+            warn('No code in file of', f'h_{h:064x}')
             pass
-    return False
+    return None
 
 def execute_with_jumps(ctx, state, lines):
     #
@@ -184,7 +204,7 @@ def execute_with_jumps(ctx, state, lines):
                         return False
                 #
         if state.gaz <= 0:
-            warn('Out of gaz')
+            warn('Out of gaz' + ' (internal)' if is_internal(ctx) else '')
         else:
             debug('Gaz left:', state.gaz)
     except:
@@ -236,20 +256,6 @@ def _execute(ctx, state, name, avs):
         # raise EmptyPHIError()
         return avs[state.phiindex]
         #
-    elif name == 'JUMP':
-        a0, = avs
-        assert type(a0) is int
-        return JumpTarget(f'~{a0:x}', 1)
-        #
-    elif name == 'JUMPI':
-        a0, a1 = avs
-        return JumpTarget(f'~{a0:x}', a1)
-        #
-    elif name == 'SSTORE':
-        a0, a1 = avs
-        state.sstores.add(a0)
-        return None
-        #
     elif name == 'CALLDATASIZE':
         () = avs
         return len(ctx['Calldata'])
@@ -272,7 +278,7 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'ORIGIN':
         () = avs
-        return ctx['Caller']
+        return ctx['Origin']
         #
     elif name == 'NUMBER':
         () = avs
@@ -289,6 +295,31 @@ def _execute(ctx, state, name, avs):
     elif name == 'GAS':
         () = avs
         return ctx['Gaslimit']
+        #
+    elif name == 'RETURNDATASIZE':
+        () = avs
+        return UnknownValue()
+        #
+    elif name == 'MSIZE':
+        () = avs
+        return UnknownValue()
+        #
+    elif not type(avs[0]) is int:
+        return UnknownValue()
+        #
+    elif name == 'JUMP':
+        a0, = avs
+        return JumpTarget(f'~{a0:x}', 1)
+        #
+    elif name == 'JUMPI':
+        a0, a1 = avs
+        return JumpTarget(f'~{a0:x}', a1)
+        #
+    elif name == 'SSTORE':
+        a0, a1 = avs
+        state.sstores.add(a0)
+        ctx['Storage'][ctx['Address']][a0] = a1
+        return None
         #
     elif not all(type(av) is int for av in avs):
         return UnknownValue()
@@ -320,9 +351,17 @@ def _execute(ctx, state, name, avs):
         a0, a1 = avs
         return a0 // a1 if a1 != 0 else 0
         #
+    elif name == 'SDIV':
+        a0, a1 = avs
+        return u256(s256(a0) // s256(a1)) if a1 != 0 else 0
+        #
     elif name == 'MOD':
         a0, a1 = avs
         return a0 % a1 if a1 != 0 else 0
+        #
+    elif name == 'SMOD':
+        a0, a1 = avs
+        return u256(s256(a0) % s256(a1)) if a1 != 0 else 0
         #
     elif name == 'ADDMOD':
         a0, a1, a2 = avs
@@ -431,15 +470,15 @@ def _execute(ctx, state, name, avs):
     elif name == 'SLOAD':
         a0, = avs
         state.sloads.add(a0)
-        v = ctx['Storage'].get(ctx['Address'], {}).get(a0)
+        v = ctx['Storage'][ctx['Address']].get(a0)
         return v if v is not None else UnknownValue()
+        #
+    elif name == 'BLOCKHASH':
+        a0, = avs
+        return sha3(b'BLOCKHASH_' + u256_to_bytes(a0))
         #
     elif name == 'EXTCODESIZE':
         a0, = avs
-        return UnknownValue()
-        #
-    elif name == 'RETURNDATASIZE':
-        () = avs
         return UnknownValue()
         #
     elif name == 'FW':
@@ -464,10 +503,12 @@ def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0,
     new_state            = ExecutionState()
     new_state.sloads     = state.sloads
     new_state.sstores    = state.sstores # for STATICCALL we could leave this empty, but let's be optimistic and keep it simple
-    new_state.gaz        = state.gaz
+    reserved_gaz         = state.gaz // 4
+    new_state.gaz        = state.gaz - reserved_gaz
     ok                   = execute_msg(new_ctx, new_state)
-    state.gaz            = new_state.gaz
+    state.gaz            = new_state.gaz + reserved_gaz
     # clear resulting mem, since we don't currently support return value
     _m    = state.mem[o0:o1]
     _m[:] = bytes(len(_m))
-    return 1 if ok else 0
+    if ok is None: return UnknownValue()
+    else:          return 1 if ok else 0

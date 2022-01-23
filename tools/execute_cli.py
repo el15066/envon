@@ -3,7 +3,42 @@ import sys
 import json
 import argparse
 
-from execute import execute_tx
+from collections import defaultdict
+
+from execute import execute_tx, debug, warn, sha3
+
+class StorageReader:
+
+    def __init__(self, f):
+        self.f    = f
+        self.line = ''
+        self._readline()
+
+    def _readline(self):
+        self.line = self.f.readline()
+
+    def read_for_this_tx(self, tx):
+        res = defaultdict(dict)
+        while self.line:
+            if self.line[0] == 'S':
+                ps = self.line.split()
+                if len(ps) == 4: ps.append('00')
+                [p0, p1, p2, p3, p4] = ps
+                assert p0 == 'S'
+                _tx = int(p1), int(p2)
+                if   _tx >  tx: break
+                elif _tx == tx:
+                    assert len(p3) == 120
+                    assert 2 <= len(p4) <= 64
+                    ca = int(p3[  : 40], 16)
+                    # ci = int(p3[40: 56], 16)
+                    sa = int(p3[56:120], 16)
+                    sc = int(p4, 16)
+                    res[ca][sa] = sc
+            #
+            self._readline()
+        return res
+
 
 def parse_map(fm):
     m = {}
@@ -17,7 +52,7 @@ def parse_map(fm):
     fm.close()
     return m
 
-def prepare_ctx(line, storage, code_map, code_dir):
+def prepare_ctx(line, code_map, code_dir):
     # {
     #     "Block"      : 7500000,
     #     "Index"      : 6,
@@ -34,7 +69,6 @@ def prepare_ctx(line, storage, code_map, code_dir):
     t = json.loads(line)
     assert t['Callvalue'][:2] == '0x'
     return {
-        'Storage':                  storage,
         'Codemap':                  code_map,
         'Codedir':                  code_dir,
         'Block':                    t['Block'     ],
@@ -52,25 +86,19 @@ def prepare_ctx(line, storage, code_map, code_dir):
         'Calldata':   bytes.fromhex(t['Calldata'  ]),
     }
 
-def main(fi, fm, code_dir):
-    storage = {
-        0x0000000000085d4780b73119b644ae5ecd22b376: {
-            0x0000000000000000000000000000000000000000000000000000000000000003: 0x811c5f8dfbdd70c245e66e4cd181040b2630424a,
-            0x6e41e0fbe643dfdb6043698bf865aada82dc46b953f754a3468eaa272a362dc7: 0xc97787c9054c3ede4b96B74AbA3F32a336045d6C,
-        },
-    }
+def main(fi, fm, fs, code_dir):
+    s_reader = StorageReader(fs)
     code_map = parse_map(fm)
     for i, line in enumerate(fi):
         # if i > 10000: break
-        # print(f' {i:9}  ', end='')
-        # print(f'Transaction line {i:9}')
         #
-        ctx = prepare_ctx(line, storage, code_map, code_dir)
+        ctx = prepare_ctx(line, code_map, code_dir)
+        tx  = ctx['Block'], ctx['Index']
+        debug(tx)
+        ctx['Storage'] = s_reader.read_for_this_tx(tx)
         # if code_map.get(ctx['Address']) != 0x418c9d56c1e2eb1f7466538680767178d3bede656157ff88f3f7ca214c04f37d: continue
         # if code_map.get(ctx['Address']) != 0x53413c38b8692d456854fd748655e4cd72b4130878511d6242f725adea1a80d0: continue
         execute_tx(ctx)
-        # print()
-        # print()
         # return
 
 
@@ -78,16 +106,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simple EVM-like code execution')
     parser.add_argument('--input',    '-i', type=argparse.FileType('r'),                  help='input file with transcations to excecute')
     parser.add_argument('--addr-map', '-m', type=argparse.FileType('r'),                  help='input file with contract address to code hash pairs')
+    parser.add_argument('--storage',  '-s', type=argparse.FileType('r'),                  help='input file with accessed storage data per tx')
     parser.add_argument('--code-dir', '-d', type=str,                    default='code/', help='directory with code files for each contract')
     args = parser.parse_args()
     #
     fi = args.input
     fm = args.addr_map
-    if fi is None or fm is None:
+    fs = args.storage
+    if fi is None or fm is None or fs is None:
         parser.print_usage()
         sys.exit(1)
     #
     cd = args.code_dir
     if cd[-1] == '/': cd = cd[:-1]
     #
-    main(fi, fm, cd)
+    main(fi, fm, fs, cd)
