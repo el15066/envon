@@ -263,7 +263,7 @@ instruction_list = (
     #
     # the following are pseudo-instructions that help with analysis
     #
-    ( 0x100, 'DUMMY',           0,  0),
+    ( 0x100, 'DUMMY',           0,  1),
     ( 0x101, 'PHI',             0,  0),
 )
 

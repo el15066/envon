@@ -8,9 +8,9 @@ class Valuation:
         self.name            = name
         self.avs             = avs
         self.avsh            = avsh
-        self.no_value        = node.en().pushes == 0 if no_value is None else no_value
-        self.origin          = node                  if origin   is None else origin
-        self._hash           = hash((name, avsh))    if _hash    is None else _hash
+        self.no_value        = node.en().pushes() == 0 if no_value is None else no_value
+        self.origin          = node                    if origin   is None else origin
+        self._hash           = hash((name, avsh))      if _hash    is None else _hash
         self.possible_values = possible_values
         assert possible_values is None or all(type(v) is int for v in possible_values)
 
@@ -27,6 +27,8 @@ class Valuation:
         s = 'V' + repr(self.node) + '-' + self.name + '(' + ', '.join(f'#{v:x}' if type(v) is int else repr(v) for v in self.avs) + ')-' + hex(self._hash&0xfffff)[1:6]
         if self.possible_values:
             s += repr(self.possible_values)
+        if self.no_value:
+            s += '-NV'
         return s
 
     def forward(self, n, avsh):

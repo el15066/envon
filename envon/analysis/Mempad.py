@@ -7,8 +7,8 @@ log = Log(__name__)
 
 class Mempad(Valuation):
 
-    def __init__(self, node, name, avs, avsh, bytemap):
-        super().__init__(node, name, avs, avsh, _hash=0)
+    def __init__(self, node, name, avs, avsh, bytemap, *, no_value=None):
+        super().__init__(node, name, avs, avsh, no_value=no_value, _hash=0)
         self._bytemap = bytemap
 
     def __hash__(self):

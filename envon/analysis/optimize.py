@@ -162,7 +162,7 @@ class ValuationUpdate:
         elif n.is_phi():
             #
             if n.is_memphi():
-                v = Mempad(n, name, avs, avsh, {})
+                v = Mempad(n, name, avs, avsh, {}, no_value=True)
                 v.meet(avs)
                 v.finalize(n._id)
             else:
@@ -198,7 +198,7 @@ class ValuationUpdate:
                     v = _forward(q.pop(), n, avsh)
                 else:
                     self.optimizer.dead_phis.discard(n)
-                    v = Valuation(n, name, avs, avsh, _hash=hash(('PHI', n._id, t)), possible_values=t)
+                    v = Valuation(n, name, avs, avsh, no_value=False, _hash=hash(('PHI', n._id, t)), possible_values=t)
             #
         elif name == 'ADD':
             a0, a1 = avs
