@@ -40,7 +40,6 @@ class Optimizer:
 
     def __init__(self):
         self.graph_requested = True
-        self.dead_phis       = set()
 
     def optimize(self, analysis):
         log.info('Running optimizer')
@@ -141,20 +140,31 @@ class ValuationUpdate:
     def apply(self):
         # pylint: disable=too-many-nested-blocks
         # pylint: disable=too-many-branches
-        res   = []
-        n     = self.node
-        v     = None
-        v_old = n.valuation
-        name  = n.en().name()
-        avs   = tuple(a.valuation for a in n.args())
+        res         = []
+        n           = self.node
+        v           = None
+        v_old       = n.valuation
+        n.valuation = None
+        was_origin  = n.is_origin
+        n.is_origin = False
+        name        = n.en().name()
+        avs         = tuple(a.valuation for a in n.args())
         if n.en().commutes_first_second():
             a0, a1 = avs[:2]
             if hash(a0) > hash(a1):
                 avs = (a1, a0, *avs[2:])
-        avsh = hash(avs)
+        avsh = hash(tuple(
+            a if not is_valuation(a) or a.origin.is_origin else n._id
+            for a in avs
+        ))
         #
-        if is_valuation(v_old) and v_old.avsh == avsh:             return res
-        if not n.is_phi() and not all(a is not None for a in avs): return res
+        if (
+            (is_valuation(v_old) and v_old.avsh == avsh) or
+            (not n.is_phi() and any(a is None for a in avs))
+        ):
+            n.valuation = v_old
+            n.is_origin = was_origin
+            return res
         #
         if   n.is_constant():
             v = n.get_value() # int
@@ -175,12 +185,8 @@ class ValuationUpdate:
                         if is_valuation(a):
                             # if a == v_old and v_old.name == 'PHI': # this is sufficient to conclude `a` came from `v_old` and `v_old` was created here (at `n`)
                             #                                        # but not necessary (i.e. in case there are 2 or more loops through `n`)
-                            o = a.origin
-                            if o == n:
+                            if not a.origin.is_origin:
                                 # me = PHI(me, ...rest) <=> me = PHI(...rest)
-                                continue
-                            if o in self.optimizer.dead_phis:
-                                #
                                 continue
                             if a.possible_values is not None:
                                 for aa in a.possible_values:
@@ -194,10 +200,8 @@ class ValuationUpdate:
                 t = tuple(sorted(t))
                 #
                 if len(q) == 1:
-                    self.optimizer.dead_phis.add(n)
                     v = _forward(q.pop(), n, avsh)
                 else:
-                    self.optimizer.dead_phis.discard(n)
                     v = Valuation(n, name, avs, avsh, no_value=False, _hash=hash(('PHI', n._id, t)), possible_values=t)
             #
         elif name == 'ADD':
@@ -433,10 +437,11 @@ class ValuationUpdate:
         if v is None:
             v = Valuation(n, name, avs, avsh)
         #
-        if v != n.valuation:
+        if v != v_old:
             for r in self.node.uses():
                 res.append(ValuationUpdate(self.optimizer, r))
         n.valuation = v
+        n.is_origin = is_valuation(v) and v.origin == n
         if type(v) is int:
             if not n.is_constant():
                 n.comment = f'#{v:x}'

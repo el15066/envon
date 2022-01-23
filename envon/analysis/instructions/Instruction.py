@@ -21,6 +21,7 @@ class Instruction:
         self.comment   = None
         self.valuation = None
         self.marked    = False
+        self.is_origin = True
 
     def __str__(self):
         s = f'{repr(self)} = {self.repr_name()}({repr(self._args)[1:-1]})'
