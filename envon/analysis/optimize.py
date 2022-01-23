@@ -1,4 +1,6 @@
 
+import sys
+
 from collections import deque #, defaultdict
 
 from .Mempad       import Mempad
@@ -10,14 +12,18 @@ from envon.helpers import Log
 
 log = Log(__name__)
 
+def _debug(*args, **kwargs):
+    # print(*args, **kwargs, file=sys.stderr)
+    pass
+
 def general_worklist(initial_updates):
     wl = deque()
     wl.extend(initial_updates)
-    seen = set()
+    seen = set(u.node for u in wl if type(u) is ValuationUpdate)
     while wl:
         u = wl.popleft()
         if type(u) is ValuationUpdate: seen.discard(u.node)
-        # log.debug('u', u)
+        _debug('u', u)
         new_updates = []
         for u2 in u.apply():
             if type(u2) is ValuationUpdate:
@@ -25,9 +31,9 @@ def general_worklist(initial_updates):
                     continue
                 seen.add(u2.node)
             new_updates.append(u2)
-        # log.debug('u', u, '->', new_updates)
-        wl.extend(new_updates)       # BFS
-        # wl.extendleft(new_updates) # DFS
+        _debug('u', u, '->', new_updates)
+        # wl.extend(new_updates)   # BFS
+        wl.extendleft(new_updates) # DFS
         yield wl
 
 def find_heads(analysis):
@@ -53,7 +59,7 @@ class Optimizer:
         for h in find_heads(analysis):
             iu.append(ValuationUpdate(self, h))
         #
-        max_i = 400000
+        max_i = 1000000
         graph_count = 0
         for i, wl in enumerate(general_worklist(iu)):
             if  self.graph_requested or i > max_i:
@@ -67,7 +73,7 @@ class Optimizer:
                 if graph_count > 150: i = max_i
             self.processEvents(wl)
         #
-        log.info('Optimizer complete')
+        log.info('Optimizer complete after', i, 'updates')
 
     def processEvents(self, wl):
         for ev in events.get_and_clear():
@@ -337,13 +343,13 @@ class ValuationUpdate:
                 a0, a1 = avs
                 if type(a1) is int:
                     if a1 == 0:
-                        log.debug('!! CERTAIN EDGE (Not Taken) !!', b)
+                        log.debug('!! CERTAIN EDGE (NT) !!', b)
                         can_jump = False
                         for b2 in list(b.jump_edges()):
                             b.remove_jump_edge(b2)
                             self._edge_update(res, b2)
                     else:
-                        log.debug('!! CERTAIN EDGE (Taken) !!', b)
+                        log.debug('!! CERTAIN EDGE (T) !!', b)
                         b2 = b.remove_fallthrough_edge()
                         self._edge_update(res, b2)
             #
