@@ -1,6 +1,8 @@
 import sys
 import argparse
 
+DEBUG = False
+
 class Reader:
 
     def __init__(self, f):
@@ -56,6 +58,7 @@ class Reader:
             elif self.tx == tx:   return self.addrs
             else:                 self._read_1_tx()
 
+
 def main(fa, fp):
     ra = Reader(fa)
     rp = Reader(fp)
@@ -65,12 +68,17 @@ def main(fa, fp):
         if tx      is None: break
         addrs_a               = ra.read_addrs_for_this_tx(tx)
         if addrs_a is None: continue
-        # if addrs_a != addrs_p:
-        #     print(tx)
-        #     for a in addrs_a: print(a)
-        #     print('p:')
-        #     for a in addrs_p: print(a)
-        #     print()
+        if DEBUG:
+            if addrs_a != addrs_p:
+                print(tx)
+                for a in addrs_a: print(a)
+                print('p:')
+                for a in addrs_p: print(a)
+                print('-:')
+                for a in addrs_a - addrs_p: print(a)
+                print('+:')
+                for a in addrs_p - addrs_a: print(a)
+                print()
         # res is (txs, predicted, actual, common) aka (txs, PP, P, TP)
         res = results.get(contract, [0, 0, 0, 0])
         res[0] += 1
@@ -87,7 +95,7 @@ def main(fa, fp):
         totals[1] += p
         totals[2] += a
         totals[3] += c
-        if p + a - c > 100:
+        if p + a - c > 10:
             print('--- Contract ' + k)
             print(f'  Coverage: {100*  c  /a if a else -1 :5.1f} %  missed: {a-c:7}')
             print(f'  Overhead: {100*(p-c)/a if a else -1 :5.0f} %  added:  {p-c:7}')
