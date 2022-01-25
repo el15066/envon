@@ -59,18 +59,22 @@ class Optimizer:
         for h in find_heads(analysis):
             iu.append(ValuationUpdate(self, h))
         #
-        max_i = 1000000
-        graph_count = 0
+        max_i  = 1000000
+        graphs = 150
         for i, wl in enumerate(general_worklist(iu)):
+            #
             if  self.graph_requested or i > max_i:
                 if i > max_i + 50:
                     import sys
                     log.error('Too many worklist updates')
                     sys.exit(1)
                 self.graph_requested = False
-                make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
-                graph_count += 1
-                if graph_count > 150: i = max_i
+                if graphs > 0:
+                    graphs -= 1
+                    make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
+                else:
+                    log.warning('Too many graphs')
+            #
             self.processEvents(wl)
         #
         log.info('Optimizer complete after', i, 'updates')
@@ -86,26 +90,8 @@ class Optimizer:
                 wl.append(u)
 
 
-def mark_blocks(blocks):
-    todo = [
-        MarkBlockUpdate(b)
-        for b in blocks
-    ]
-    for _ in general_worklist(todo): pass
 
-def mark_instructions(instructions):
-    todo = [
-        MarkInstructionUpdate(n)
-        for n in instructions
-    ]
-    for _ in general_worklist(todo): pass
 
-def mark_by_valuation(valuations):
-    todo = [
-        MarkByValuationUpdate(v)
-        for v in valuations
-    ]
-    for _ in general_worklist(todo): pass
 
 def u256(x):
     return x & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -583,3 +569,25 @@ class MarkDepsByValuationUpdate:
                     av.marked = True
                     res.append(MarkDepsByValuationUpdate(av))
         return res
+
+
+def mark_blocks(blocks):
+    todo = [
+        MarkBlockUpdate(b)
+        for b in blocks
+    ]
+    for _ in general_worklist(todo): pass
+
+def mark_instructions(instructions):
+    todo = [
+        MarkInstructionUpdate(n)
+        for n in instructions
+    ]
+    for _ in general_worklist(todo): pass
+
+def mark_by_valuation(valuations):
+    todo = [
+        MarkByValuationUpdate(v)
+        for v in valuations
+    ]
+    for _ in general_worklist(todo): pass
