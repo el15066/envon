@@ -91,9 +91,8 @@ class MarkedONsUpdate:
 
 
 def print_calc_with_jumps(fo, analysis, vs):
-    bs = set(v.node._block for v in vs)
-    mark_blocks(bs)
     mark_by_valuation(vs)
+    mark_blocks(set(v.node._block for v in vs))
     jumps = set()
     for b in analysis:
         if b.marked:
@@ -102,6 +101,7 @@ def print_calc_with_jumps(fo, analysis, vs):
     jumps.discard(None)
     mark_by_valuation(n.valuation for n in jumps)
     make_graph_file(analysis)
+    make_graph_file(analysis, only_marked=True)
     log.debug(latest_origin_valuation.stats)
     #
     entry_b = analysis.get_entry_block()
@@ -119,31 +119,32 @@ def print_calc_with_jumps(fo, analysis, vs):
     make_graph_ons_file(analysis, ctx)
     log.debug(latest_origin_valuation.stats)
     #
-    expect_b      = entry_b
-    last_was_jump = False
-    for b in analysis:
-        if b.marked:
-            if b != expect_b and not last_was_jump:
-                if  expect_b and expect_b.marked:
-                    fo.write(f'  0 = #{expect_b.offset:x}\n')
-                    fo.write( '  0 = JUMP 0\n')
-                else:
-                    fo.write('STOP\n')
-            #
-            if b == entry_b: fo.write(repr(b) + ' | ENTRY\n')
-            else:            fo.write(repr(b) + ' | ' + ' '.join((repr(b2) for b2 in b.in_edges())) + '\n')
-            #
-            c = None
-            for on in b.marked_ons:
-                c = ctx.on_calcs[on]
-                fo.write(f'{on:3} = ' + (f'#{c:x}' if type(c) is int else c[0] + ''.join(f' {j}' for j in c[1])) + '\n')
-            #
-            last_was_jump = type(c) is tuple and c[0] == 'JUMP'
-            #
-            # TODO: refactor
-            if         b.fallthrough_edge(): expect_b =       b.fallthrough_edge()
-            elif count(b.jump_edges()) == 1: expect_b = tuple(b.jump_edges())[0]
-            else:                            expect_b = None
+    bs = [b for b in analysis if b.marked]
+    bs.append(None)
+    for i in range(len(bs)-1):
+        b = bs[i]
+        #
+        if b == entry_b: fo.write(repr(b) + ' | ENTRY\n')
+        else:            fo.write(repr(b) + ' | ' + ' '.join((repr(b2) for b2 in b.in_edges())) + '\n')
+        #
+        c = None
+        for on in b.marked_ons:
+            c = ctx.on_calcs[on]
+            fo.write(f'{on:3} = ' + (f'#{c:x}' if type(c) is int else c[0] + ''.join(f' {j}' for j in c[1])) + '\n')
+        #
+        last_was_jump = type(c) is tuple and c[0] == 'JUMP'
+        #
+        # TODO: refactor
+        if         b.fallthrough_edge(): expect_b =       b.fallthrough_edge()
+        elif count(b.jump_edges()) == 1: expect_b = tuple(b.jump_edges())[0]
+        else:                            expect_b = None
+        #
+        if not last_was_jump and bs[i+1] != expect_b:
+            if expect_b and expect_b.marked:
+                fo.write(f'  0 = #{expect_b.offset:x}\n')
+                fo.write( '  0 = JUMP 0\n')
+            else:
+                fo.write('STOP\n')
     #
     res = set(
         ctx.on_map.get(v)
