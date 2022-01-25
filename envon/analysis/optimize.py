@@ -184,7 +184,7 @@ class ValuationUpdate:
         # pylint: disable=too-many-branches
         res         = []
         n           = self.node
-        v           = None
+        v           = '?'
         v_old       = n.valuation
         n.valuation = None
         was_origin  = n.is_origin
@@ -476,7 +476,7 @@ class ValuationUpdate:
             v = Mempad(n, name, avs, avsh, {})
             v.finalize()
         #
-        if v is None:
+        if v == '?':
             v = Valuation(n, name, avs, avsh)
         #
         if v != v_old:
