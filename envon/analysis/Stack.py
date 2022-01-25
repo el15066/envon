@@ -1,6 +1,4 @@
 
-from .instructions import StackPhi, StackPhiLoopBreaker
-
 class Stack:
 
     def __init__(self, block):
@@ -28,8 +26,7 @@ class Stack:
     def _dig(self, sp):
         n = self._buried.get(sp)
         if n is None:
-            if sp >= -90: n = StackPhi(           self._block, sp)
-            else:         n = StackPhiLoopBreaker(self._block, sp) # arbitrarily stop dig loops
+            n = self._block.create_stack_phi(sp)
             self._buried[sp] = n
         return n
 

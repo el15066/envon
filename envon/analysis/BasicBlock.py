@@ -2,7 +2,7 @@
 from collections   import deque
 
 from .Stack        import Stack
-from .instructions import MemPhi
+from .instructions import StackPhi, StackPhiLoopBreaker, MemPhi, DummyInstruction
 
 from envon.helpers import Log
 
@@ -43,9 +43,14 @@ class BasicBlock:
     def phis(self):
         return iter(self._phis)
 
-    def add_phi(self, phi):
-        self._phis.append(phi)
-        self.ns.appendleft(phi)
+    def create_stack_phi(self, sp):
+        if self.offset == 0: return DummyInstruction(self)
+        else:
+            if sp >= -90: phi = StackPhi(           self, sp)
+            else:         phi = StackPhiLoopBreaker(self, sp) # arbitrarily stop stack dig loops
+            self._phis.append(phi)
+            self.ns.appendleft(phi)
+            return phi
 
     def in_edges(self):
         return iter(self._in_edges)

@@ -10,7 +10,6 @@ class Phi(Instruction):
     def __init__(self, block):
         en = PhiEvmInstruction(block.offset)
         super().__init__(en, block)
-        block.add_phi(self)
         events.new_event(('New PHI', self))
 
     def repr_name(self):
@@ -43,13 +42,7 @@ class StackPhi(Phi):
         return edge.stack.get(self._sp)
 
 
-class StackPhiLoopBreaker(Phi):
-
-    def __init__(self, block, sp):
-        assert sp < 0
-        super().__init__(block)
-        self._sp = sp
-        self._resolved = True
+class StackPhiLoopBreaker(StackPhi):
 
     def repr_name(self):
         return f'PHI~LB[{self._sp}]'
