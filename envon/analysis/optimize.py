@@ -96,10 +96,11 @@ class Optimizer:
             self.processEvents(wl)
             #
             if not wl:
-                wl.extend([
-                    KillBlockUpdate(self, b)
-                    for b in find_unreachable_blocks(analysis)
-                ])
+                if not wl:
+                    wl.extend([
+                        KillBlockUpdate(self, b)
+                        for b in find_unreachable_blocks(analysis)
+                    ])
                 if not wl:
                     wl.extend([
                         ValuationUpdate(self, phi)
@@ -126,6 +127,9 @@ class KillBlockUpdate:
         self.optimizer = optimizer
         self.block     = block
 
+    def __repr__(self):
+        return 'KILL(' + repr(self.block) + ')'
+
     def apply(self):
         res    = []
         b      = self.block
@@ -136,6 +140,7 @@ class KillBlockUpdate:
                 res.append(KillBlockUpdate(self.optimizer, b2))
             else:
                 self.optimizer.todo_phis.update(b2.phis())
+        return res
 
 
 def u256(x):
