@@ -76,7 +76,6 @@ class MarkedONsUpdate:
             b.marked_ints,
             (latest_origin_valuation(n.valuation) for n in b if n.marked and not n.is_memphi())
         ):
-            if is_valuation(v) and v.name in 'PHI' and all(av is None for av in v.avs): continue
             on = self.ctx.get_on(v)
             if on not in avail_ons:
                 avail_ons.add(on)
@@ -84,11 +83,8 @@ class MarkedONsUpdate:
         #
         if avail_ons != b.marked_avail_ons:
             b.marked_avail_ons = avail_ons
-            for b2 in chain(
-                [b.fallthrough_edge()],
-                b.jump_edges()
-            ):
-                if b2 and b2.marked:
+            for b2 in b.out_edges():
+                if b2.marked:
                     res.append(MarkedONsUpdate(self.ctx, b2))
         #
         return res
