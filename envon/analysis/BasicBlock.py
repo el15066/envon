@@ -61,6 +61,13 @@ class BasicBlock:
     def jump_edges(self):
         return iter(self._jump_edges) # TODO: maybe frozenset?
 
+    def out_edges(self):
+        res = []
+        b2  = self._fallthrough_edge
+        if  b2 is not None:         res.append(b2)
+        for b2 in self._jump_edges: res.append(b2)
+        return res
+
     def accept_edge(self, src):
         assert not src.skip
         assert src not in self._in_edges
@@ -101,6 +108,12 @@ class BasicBlock:
             self._fallthrough_edge = None
             b.forget_edge(self)
         return b
+
+    def remove_edge(self, b):
+        if b == self._fallthrough_edge:
+            self.remove_fallthrough_edge()
+        else:
+            self.remove_jump_edge(b)
 
     def get_mem(self):
         n = self._mem
