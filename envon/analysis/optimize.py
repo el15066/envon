@@ -42,10 +42,28 @@ def find_heads(analysis):
             if not n.args_count():
                 yield n
 
+def find_unreachable_blocks(analysis):
+    seen = set()
+    wl   = deque()
+    wl.append(analysis.get_block_at(0))
+    while wl:
+        b = wl.popleft()
+        if b not in seen:
+            seen.add(b)
+            for b2 in b.out_edges():
+                if not b2.skip:
+                    wl.append(b2)
+    return [
+        b
+        for b in analysis
+        if  b not in seen
+    ]
+
 class Optimizer:
 
     def __init__(self):
         self.graph_requested = True
+        self.todo_phis       = set()
 
     def optimize(self, analysis):
         log.info('Running optimizer')
@@ -76,6 +94,18 @@ class Optimizer:
                     log.warning('Too many graphs')
             #
             self.processEvents(wl)
+            #
+            if not wl:
+                wl.extend([
+                    KillBlockUpdate(self, b)
+                    for b in find_unreachable_blocks(analysis)
+                ])
+                if not wl:
+                    wl.extend([
+                        ValuationUpdate(self, phi)
+                        for phi in self.todo_phis
+                    ])
+                    self.todo_phis.clear()
         #
         log.info('Optimizer complete after', i, 'updates')
 
@@ -90,7 +120,22 @@ class Optimizer:
                 wl.append(u)
 
 
+class KillBlockUpdate:
 
+    def __init__(self, optimizer, block):
+        self.optimizer = optimizer
+        self.block     = block
+
+    def apply(self):
+        res    = []
+        b      = self.block
+        b.skip = True
+        for b2 in b.out_edges():
+            b.remove_edge(b2)
+            if all(e.skip for e in b2.in_edges()):
+                res.append(KillBlockUpdate(self.optimizer, b2))
+            else:
+                self.optimizer.todo_phis.update(b2.phis())
 
 
 def u256(x):
