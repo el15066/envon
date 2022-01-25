@@ -45,7 +45,7 @@ def find_heads(analysis):
 def find_unreachable_blocks(analysis):
     seen = set()
     wl   = deque()
-    wl.append(analysis.get_block_at(0))
+    wl.append(analysis.get_entry_block())
     while wl:
         b = wl.popleft()
         if b not in seen:

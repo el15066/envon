@@ -21,6 +21,8 @@ class Analysis:
         return self._blocks[0]
 
     def get_block_at(self, offset):
+        if offset == 0:
+            return None # use get_entry_block() for this
         b = self._block_map.get(offset)
         # if b is not None and b.skip:
         #     b = None
