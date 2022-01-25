@@ -4,7 +4,7 @@ import sys
 from collections import deque #, defaultdict
 
 from .Mempad       import Mempad
-from .Valuation    import Valuation, is_valuation, latest_valuation
+from .Valuation    import Valuation, is_valuation, latest_origin_valuation
 from .events       import events
 
 from envon.graph   import make_graph_file
@@ -585,7 +585,7 @@ class MarkByValuationUpdate:
             #     res.append(MarkByValuationUpdate(v.origin))
             # else:
             for av in v.avs:
-                av = latest_valuation(av)
+                av = latest_origin_valuation(av)
                 if av is None:
                     res = []
                     # TODO: maybe add mark revert update(s) ?
@@ -607,7 +607,7 @@ class MarkDepsByValuationUpdate:
         v   = self.valuation
         n   = v.node
         for av in v.avs:
-            av = latest_valuation(av)
+            av = latest_origin_valuation(av)
             if av is None:
                 res = []
                 # TODO: maybe add mark revert update(s) ?
