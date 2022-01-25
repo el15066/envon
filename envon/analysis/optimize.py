@@ -241,10 +241,10 @@ class ValuationUpdate:
                 assert all(type(a) is int for a in t)
                 t = tuple(sorted(t))
                 #
-                if len(q) == 1:
-                    v = _forward(q.pop(), n, avsh)
-                else:
-                    v = Valuation(n, name, avs, avsh, no_value=False, _hash=hash(('PHI', n._id, t)), possible_values=t)
+                # q2 = q.copy()
+                if   len(q) == 0: v = None
+                elif len(q) == 1: v = _forward(q.pop(), n, avsh)
+                else:             v = Valuation(n, name, avs, avsh, no_value=False, _hash=hash(('PHI', n._id, t)), possible_values=t)
             #
         elif name == 'ADD':
             a0, a1 = avs
