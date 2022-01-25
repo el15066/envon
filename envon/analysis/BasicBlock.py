@@ -43,13 +43,16 @@ class BasicBlock:
     def phis(self):
         return iter(self._phis)
 
+    def _add_phi(self, phi):
+        self._phis.append(phi)
+        self.ns.appendleft(phi)
+
     def create_stack_phi(self, sp):
         if self.offset == 0: return DummyInstruction(self)
         else:
             if sp >= -90: phi = StackPhi(           self, sp)
             else:         phi = StackPhiLoopBreaker(self, sp) # arbitrarily stop stack dig loops
-            self._phis.append(phi)
-            self.ns.appendleft(phi)
+            self._add_phi(phi)
             return phi
 
     def in_edges(self):
@@ -119,6 +122,7 @@ class BasicBlock:
         n = self._mem
         if n is None:
             n = MemPhi(self)
+            self._add_phi(n)
             self._memphi = n
             self._mem    = n
         return n
