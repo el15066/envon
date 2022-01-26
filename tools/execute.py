@@ -152,15 +152,20 @@ class ExecutionState:
         self.sloads   = set()
         self.sstores  = set()
         self.mem      = Memory()
+        self.saved_regs      = {0: 0}
+        self.saved_cur_block = 'ENTRY'
+        self.saved_i         = -1
 
     def copy(self):
-        raise NotImplementedError # don't use yet
         r = ExecutionState()
-        r.gaz          = self.gaz
-        r.phiindex     = self.phiindex
-        r.sloads       = self.sloads.copy()
-        r.sstores      = self.sstores.copy()
+        r.gaz      = self.gaz
+        r.phiindex = self.phiindex
+        r.sloads   = self.sloads.copy()
+        r.sstores  = self.sstores.copy()
         r.mem      = self.mem.copy()
+        r.saved_regs      = self.saved_regs
+        r.saved_cur_block = self.saved_cur_block
+        r.saved_i         = self.saved_i
         return r
 
 
@@ -218,74 +223,91 @@ def execute_with_jumps(ctx, state, lines):
             phimap            = _phimap.split()
             block_map[block]  = (i-1, phimap)
     #
-    regs      = {0: 0}
-    cur_block = 'ENTRY'
+    state_q = [state]
+    i_max   = len(lines) - 1
     try:
-        i     = -1
-        line  = ''
-        i_max = len(lines) - 1
-        while i < i_max and state.gaz > 0:
-            state.gaz -= 1
-            i         += 1
-            line       = lines[i]
-            #
-            if line[0] == '~':
-                block, _, _ = line.partition(' | ')
-                _, phimap   = block_map[block]
-                debug(block, '<-', cur_block)
-                try:
-                    state.phiindex = phimap.index(cur_block)
-                    cur_block      = block
-                except ValueError as e:
-                    warn('At', i, line, 'phimap', phimap, 'cur_block', cur_block, repr(e))
+        while state_q:
+            state     = state_q.pop()
+            regs      = state.saved_regs
+            cur_block = state.saved_cur_block
+            i         = state.saved_i
+            line      = ''
+            debug('- Resuming at', i)
+            while i < i_max and state.gaz > 0:
+                state.gaz -= 1
+                i         += 1
+                line       = lines[i]
+                #
+                if line[0] == '~':
+                    block, _, _ = line.partition(' | ')
+                    _, phimap   = block_map[block]
+                    debug(block, '<-', cur_block)
+                    try:
+                        state.phiindex = phimap.index(cur_block)
+                        cur_block      = block
+                    except ValueError as e:
+                        warn('At', i, line, 'phimap', phimap, 'cur_block', cur_block, repr(e), ctx=ctx)
+                        break
+                    #
+                elif line == 'STOP':
                     break
-                #
-            elif line == 'STOP':
-                break
-            else:
-                _on, _, _cmd = line.partition(' = ')
-                on   = int(_on)
-                cmd  = _cmd.split()
-                name = cmd[0]
-                args = [int(a) if a != 'None' else None for a in cmd[1:]]
-                #
-                try:
-                    v = None
-                    if name[0] == '#':
-                        assert not args
-                        v = int(name[1:], 16)
-                        debug(f'  {on:4}   =', hexify(v))
-                    else:
-                        avs = tuple(regs.get(a) for a in args)
-                        debug(f'  {on:4} ', name, hexify(avs), args)
-                        v   = _execute(ctx, state, name, avs)
-                        debug(f'  {on:4}   =', hexify(v))
+                else:
+                    _on, _, _cmd = line.partition(' = ')
+                    on   = int(_on)
+                    cmd  = _cmd.split()
+                    name = cmd[0]
+                    args = [int(a) if a != 'None' else None for a in cmd[1:]]
                     #
-                    if state.mem_modified:
-                        state.mem_modified = False
-                        for j in range(0, len(state.mem), 0x20):
-                            w = state.mem[j:j+0x20]
-                            if w != ZEROS:
-                                debug(f'  mem {j:4x}  {w.hex()}')
+                    try:
+                        v = None
+                        if name[0] == '#':
+                            assert not args
+                            v = int(name[1:], 16)
+                            debug(f'  {on:4}   =', hexify(v))
+                        else:
+                            avs = tuple(regs.get(a) for a in args)
+                            debug(f'  {on:4} ', name, hexify(avs), args)
+                            v   = _execute(ctx, state, name, avs)
+                            debug(f'  {on:4}   =', hexify(v))
+                        #
+                        state.mem.debug()
+                        #
+                        if   v is None: pass
+                        elif type(v) in (int, UnknownValue): regs[on] = v
+                        elif type(v) is JumpTarget:
+                            t = v.decide(block_map)
+                            if t:
+                                if t in block_map:
+                                    i, _ = block_map[t]
+                                else:
+                                    break
+                            # t = v.target
+                            # c = v.condition
+                            # if type(c) is int:
+                            #     if c != 0:
+                            #         if t in block_map:
+                            #             i, _ = block_map[t]
+                            #         else:
+                            #             break
+                            # else:
+                            #     assert type(c) is UnknownValue
+                            #     if t in block_map:
+                            #         debug('- Saving state at', i)
+                            #         s2 = state.copy()
+                            #         s2.saved_regs      = regs
+                            #         s2.saved_cur_block = cur_block
+                            #         s2.saved_i         = i
+                            #         state_q.append(s2)
+                            #         i, _ = block_map[t]
+                        else:
+                            raise WarnError('v is ' + repr(v))
+                        #
+                    except Exception as e:
+                        log.exception('At', i, line, 'name', name, 'avs', hexify(avs), 'args', args, 'tx', (ctx['Block'], ctx['Index']))
+                        if type(e) is not WarnError:
+                            # break
+                            return False
                     #
-                    if   v is None: pass
-                    elif type(v) in (int, UnknownValue): regs[on] = v
-                    elif type(v) is JumpTarget:
-                        t = v.decide(block_map)
-                        if t:
-                            if t in block_map:
-                                i, _ = block_map[t]
-                            else:
-                                break
-                    else:
-                        raise WarnError('v is ' + repr(v))
-                    #
-                except Exception as e:
-                    warn('At', i, line, 'name', name, 'avs', hexify(avs), 'args', args, repr(e))
-                    if type(e) is not WarnError:
-                        # break
-                        return False
-                #
             if state.gaz <= 0:
                 warn('Out of gaz' + (' (internal)' if is_internal(ctx) else ''), ctx=ctx)
             else:
