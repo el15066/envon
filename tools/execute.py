@@ -4,6 +4,19 @@ import itertools
 
 from Crypto.Hash import keccak
 
+from envon.helpers import Log, u256, s256
+
+log = Log(__name__)
+
+def u256_to_bytes(x):
+    return x.to_bytes(32, 'big')
+
+def bytes_to_u256(x):
+    return int.from_bytes(x, 'big')
+
+def sha3(d):
+    return bytes_to_u256(keccak.new(digest_bits=256).update(d).digest())
+
 ZEROS     = bytes(0x20)
 ADDR_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
@@ -28,22 +41,6 @@ def warn(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
     pass
 
-def u256_to_bytes(x):
-    return x.to_bytes(32, 'big')
-
-def bytes_to_u256(x):
-    return int.from_bytes(x, 'big')
-
-def u256(x):
-    return x & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-
-def s256(x):
-    return (((x + 0x8000000000000000000000000000000000000000000000000000000000000000)
-                & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
-                - 0x8000000000000000000000000000000000000000000000000000000000000000)
-
-def sha3(d):
-    return bytes_to_u256(keccak.new(digest_bits=256).update(d).digest())
 
 def is_internal(ctx):
     return ctx['Caller'] != ctx['Origin']
