@@ -327,8 +327,16 @@ class JumpTarget:
     def decide(self, block_map):
         t = self.target
         c = self.condition
-        if type(c) is int: return t if c != 0         else ''
-        else:              return t if t in block_map else ''
+        if type(c) is int:
+            go = c != 0
+        else:
+            # r = random.randrange(10)
+            # if   r == 0: go = False
+            # elif r == 1: go = True
+            # else:        go = t in block_map
+            go = t in block_map
+        #
+        return t if go else ''
 
 
 def _execute(ctx, state, name, avs):
