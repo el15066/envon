@@ -8,13 +8,13 @@ from .Valuation    import Valuation, is_valuation, latest_origin_valuation
 from .events       import events
 
 from envon.graph   import make_graph_file
-from envon.helpers import Log
+from envon.helpers import Log, u256, s256, FF32
 
 log = Log(__name__)
 
-def _debug(*args, **kwargs):
-    # print(*args, **kwargs, file=sys.stderr)
-    pass
+# def _debug(*args, **kwargs):
+#     # print(*args, **kwargs, file=sys.stderr)
+#     pass
 
 def general_worklist(initial_updates):
     wl = deque()
@@ -23,7 +23,7 @@ def general_worklist(initial_updates):
     while wl:
         u = wl.popleft()
         if type(u) is ValuationUpdate: seen.discard(u.node)
-        _debug('u', u)
+        # _debug('u', u)
         new_updates = []
         for u2 in u.apply():
             if type(u2) is ValuationUpdate:
@@ -31,7 +31,7 @@ def general_worklist(initial_updates):
                     continue
                 seen.add(u2.node)
             new_updates.append(u2)
-        _debug('u', u, '->', new_updates)
+        # _debug('u', u, '->', new_updates)
         # wl.extend(new_updates)   # BFS
         wl.extendleft(new_updates) # DFS
         yield wl
@@ -66,7 +66,8 @@ class Optimizer:
         self.todo_phis       = set()
 
     def optimize(self, analysis):
-        log.info('Running optimizer')
+        max_i = analysis.get_end() * 20
+        log.info('Running optimizer for up to', max_i, 'updates')
         #
         iu = []
         self.processEvents(iu)
@@ -77,21 +78,28 @@ class Optimizer:
         for h in find_heads(analysis):
             iu.append(ValuationUpdate(self, h))
         #
-        max_i  = 1000000
-        graphs = 150
+        i = 0
+        # graphs = 1000
         for i, wl in enumerate(general_worklist(iu)):
+            if i & 0x7FFF == 0:
+                log.info('Reached', i, 'updates')
             #
-            if  self.graph_requested or i > max_i:
-                if i > max_i + 50:
-                    import sys
-                    log.error('Too many worklist updates')
-                    sys.exit(1)
-                self.graph_requested = False
-                if graphs > 0:
-                    graphs -= 1
-                    make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
-                else:
-                    log.warning('Too many graphs')
+            # if self.graph_requested or i > max_i:
+            if i > max_i:
+                # self.graph_requested = False
+                # do_trace = i > max_i
+                # if i > max_i + 100:
+                log.error('Too many worklist updates')
+                    # wl.clear()
+                    # max_i += 10000
+                    # if max_i > 230000:
+                    #     break
+                sys.exit(1)
+                # if do_trace or graphs > 0:
+                #     graphs -= 1
+                #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
+                # else:
+                #     log.warning('Too many graphs')
             #
             self.processEvents(wl)
             #
@@ -107,6 +115,7 @@ class Optimizer:
                         for phi in self.todo_phis
                     ])
                     self.todo_phis.clear()
+                # _debug(wl)
         #
         log.info('Optimizer complete after', i, 'updates')
 
@@ -141,15 +150,6 @@ class KillBlockUpdate:
             else:
                 self.optimizer.todo_phis.update(b2.phis())
         return res
-
-
-def u256(x):
-    return x & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-
-def s256(x):
-    return (((x + 0x8000000000000000000000000000000000000000000000000000000000000000)
-                & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
-                - 0x8000000000000000000000000000000000000000000000000000000000000000)
 
 
 class PHIRefreshUpdate:
@@ -494,7 +494,7 @@ class ValuationUpdate:
 
     def _edge_update(self, res, b2):
         if b2 is not None:
-            self.optimizer.graph_requested = True
+            # self.optimizer.graph_requested = True
             for phi in b2.phis():
                 res.append(ValuationUpdate(self.optimizer, phi))
 
