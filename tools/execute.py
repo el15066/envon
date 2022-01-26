@@ -390,6 +390,9 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'EXP':
         a0, a1 = avs
+        if a0 > 2 and (a1 > 32 or a0 * a1 > 0xFFFFFFFF):
+            warn('Too large EXP', a0, a1, ctx=ctx)
+            return UnknownValue()
         return u256(a0 ** a1) if a1 != 0 else 0
         #
     elif name == 'SIGNEXTEND':
