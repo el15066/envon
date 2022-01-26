@@ -371,6 +371,8 @@ class EvmInstruction:
         self._offset     = offset
         self._opcode     = opcode
         self._push_value = push_value
+        if not self.data():
+            raise ValueError('Bad opcode ' + repr(opcode))
 
     def offset(    self): return self._offset
     def opcode(    self): return self._opcode
