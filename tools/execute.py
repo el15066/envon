@@ -1,5 +1,6 @@
 
 import sys
+import random
 import itertools
 
 from Crypto.Hash import keccak
@@ -22,6 +23,11 @@ DEBUG = False
 
 ZEROS     = bytes(0x20)
 ADDR_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+random.seed(123)
+RANDOMS = bytes([random.getrandbits(8) for i in range(65536)])
+
+UNKNOWN_SHA = sha3(b'UNKNOWN')
 
 class hexint(int):
     def __repr__(self):
@@ -62,6 +68,82 @@ class EmptyPHIError(Exception):
 class WarnError(Exception):
     pass
 
+class Memory:
+
+    def __init__(self, data=65536):
+        self._data      = memoryview(bytearray(data))
+        self.modified   = False
+        self.unknown_i0 = -1
+        self.unknown_i1 = -1
+
+    def debug(self):
+        if DEBUG and self.modified:
+            self.modified = False
+            for j in range(0, len(self._data), 0x20):
+                w = self._data[j:j+0x20]
+                if w != ZEROS:
+                    debug(f'  mem {j:4x}  {w.hex()}')
+
+    def _overlaps_unknown(self, i0, i1):
+        return i1 > len(self._data) # or i0 < self.unknown_i1 and i1 > self.unknown_i0
+
+    def _remove_unknown(self, i0, i1):
+        if i1 > len(self._data): return False
+        # self.modified = True
+        # if i0 <= self.unknown_i0 <  i1: self.unknown_i0 = min(i1, self.unknown_i1)
+        # if i0 <  self.unknown_i1 <= i1: self.unknown_i1 = max(i0, self.unknown_i0)
+        return True
+
+    def _add_unknown(self, i0, i1):
+        if i1 > len(self._data): return False
+        # self.modified = True
+        # if i0 < self.unknown_i1 and i1 > self.unknown_i0:
+        #     self.unknown_i0 = min(i0, self.unknown_i0)
+        #     self.unknown_i1 = max(i1, self.unknown_i1)
+        # else:
+        #     self.unknown_i0 = i0
+        #     self.unknown_i1 = i1
+        return True
+
+    def copy(self):
+        r = Memory(self._data)
+        r.modified   = self.modified
+        r.unknown_i0 = self.unknown_i0
+        r.unknown_i1 = self.unknown_i1
+        return r
+
+    def get_raw(self, i0, i1):
+        if i1 > len(self._data): return bytes(min(i1-i0, 65536))
+        else:                    return self._data[i0:i1]
+
+    def get(self, i0, i1):
+        if self._overlaps_unknown(i0, i1): return UnknownValue()
+        else:                              return self._data[i0:i1]
+
+    def get_u256(self, i0):
+        i1 = i0 + 32
+        if self._overlaps_unknown(i0, i1): return UnknownValue()
+        else:                              return bytes_to_u256(self._data[i0:i1])
+
+    def set(self, i0, i1, d):
+        if self._remove_unknown(i0, i1):
+            self._data[i0:i1] = d
+
+    def set_u256(self, i0, d):
+        i1 = i0 + 32
+        if self._remove_unknown(i0, i1):
+            self._data[i0:i1] = u256_to_bytes(d)
+
+    def set_byte(self, i, d):
+        if self._remove_unknown(i, i + 1):
+            self._data[i] = d
+
+    def set_unknown(self, i0, i1):
+        if self._add_unknown(i0, i1):
+            # still clear mem because unknown is approximate
+            self._data[i0:i1] = RANDOMS[:i1-i0] # bytes(len(_m)) for 0s
+
+
 class ExecutionState:
 
     def __init__(self):
@@ -69,8 +151,7 @@ class ExecutionState:
         self.phiindex = 0
         self.sloads   = set()
         self.sstores  = set()
-        self.mem      = memoryview(bytearray(65536))
-        self.mem_modified = False
+        self.mem      = Memory()
 
     def copy(self):
         raise NotImplementedError # don't use yet
@@ -79,8 +160,7 @@ class ExecutionState:
         r.phiindex     = self.phiindex
         r.sloads       = self.sloads.copy()
         r.sstores      = self.sstores.copy()
-        r.mem          = memoryview(bytearray(self.mem))
-        r.mem_modified = self.mem_modified
+        r.mem      = self.mem.copy()
         return r
 
 
@@ -337,8 +417,23 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'SSTORE':
         a0, a1 = avs
-        state.sstores.add(a0)
-        ctx['Storage'][ctx['Address']][a0] = a1
+        if type(a0) is int:
+            state.sstores.add(a0)
+            ctx['Storage'][ctx['Address']][a0] = a1
+        return None
+        #
+    elif name == 'MSTORE':
+        _, a1, a2 = avs
+        if type(a1) is int:
+            if type(a2) is int: state.mem.set_u256(   a1, a2)
+            else:               state.mem.set_unknown(a1, a1+32)
+        return None
+        #
+    elif name == 'MSTORE8':
+        _, a1, a2 = avs
+        if type(a1) is int:
+            if type(a2) is int: state.mem.set_byte(   a1, a2 & 0xFF)
+            else:               state.mem.set_unknown(a1, a1+1)
         return None
         #
     elif not all(type(av) is int for av in avs):
@@ -346,14 +441,14 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'CALLDATALOAD':
         a0, = avs
-        return bytes_to_u256(ctx['Calldata'][a0:a0+32].ljust(32))
+        if a0 < 65536: return bytes_to_u256(ctx['Calldata'][a0:a0+32].ljust(32))
+        else:          return UnknownValue()
         #
     elif name == 'CALLDATACOPY':
         _, a1, a2, a3 = avs
-        assert a1 + a3 <= len(state.mem)
-        state.mem[a1:a1+a3] = ctx['Calldata'][a2:a2+a3].ljust(a3)
-        state.mem_modified = True
-        return 0
+        if a2+a3 < 65536:
+            state.mem.set(a1, a1+a3, ctx['Calldata'][a2:a2+a3].ljust(a3))
+        return None
         #
     elif name == 'ADD':
         a0, a1 = avs
@@ -463,18 +558,6 @@ def _execute(ctx, state, name, avs):
         a0, a1 = avs
         return u256(s256(a1) >> a0) if a0 < 256 else 0
         #
-    elif name == 'MSTORE':
-        _, a1, a2 = avs
-        assert a1 + 32 <= len(state.mem)
-        state.mem[a1:a1+32] = u256_to_bytes(a2)
-        state.mem_modified = True
-        return 0
-        #
-    elif name == 'MSTORE8':
-        _, a1, a2 = avs
-        state.mem[a1] = a2 & 0xFF
-        state.mem_modified = True
-        return 0
     elif name == 'CODECOPY':
         _, a1, a2, a3 = avs
         # clear mem, since we don't have runbin here
@@ -499,13 +582,13 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'MLOAD':
         _, a1 = avs
-        assert a1 + 32 <= len(state.mem)
-        return bytes_to_u256(state.mem[a1:a1+32])
+        return state.mem.get_u256(a1)
         #
     elif name == 'SHA3':
         _, a1, a2 = avs
-        assert a1 + a2 <= len(state.mem)
-        return sha3(state.mem[a1:a1+a2])
+        d = state.mem.get(a1, a1+a2)
+        if type(d) is UnknownValue: return UNKNOWN_SHA
+        else:                       return sha3(d)
         #
     elif name == 'SHA3i':
         return sha3(b''.join(
@@ -540,7 +623,6 @@ def _execute(ctx, state, name, avs):
         raise UnknownInstructionError(name)
 
 def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0, o1):
-    assert i1 <= len(state.mem)
     if value > ctx['Callvalue']:
         return 0
     new_ctx              = ctx.copy()
@@ -548,7 +630,7 @@ def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0,
     new_ctx['Address']   =      addr & ADDR_MASK
     new_ctx['Codeaddr']  = code_addr & ADDR_MASK
     new_ctx['Callvalue'] = value
-    new_ctx['Calldata']  = bytes(state.mem[i0:i1])
+    new_ctx['Calldata']  = bytes(state.mem.get_raw(i0, i1))
     new_ctx['Caller']    = caller
     new_state            = ExecutionState()
     new_state.sloads     = state.sloads
@@ -558,7 +640,6 @@ def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0,
     ok                   = execute_msg(new_ctx, new_state)
     state.gaz            = new_state.gaz + reserved_gaz
     # clear resulting mem, since we don't currently support return value
-    _m    = state.mem[o0:o1]
-    _m[:] = bytes(len(_m))
+    state.mem.set_unknown(o0, o1)
     if ok is None: return UnknownValue()
     else:          return 1 if ok else 0
