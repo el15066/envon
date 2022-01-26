@@ -17,6 +17,9 @@ def bytes_to_u256(x):
 def sha3(d):
     return bytes_to_u256(keccak.new(digest_bits=256).update(d).digest())
 
+# DEBUG = True
+DEBUG = False
+
 ZEROS     = bytes(0x20)
 ADDR_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
@@ -31,16 +34,21 @@ def hexify(x):
     elif isinstance(x, dict): return {hexify(k): hexify(v) for k, v in x.items()}
     else:                     return x
 
-def debug(*args, **kwargs):
-    # print(*hexify(args), **kwargs, file=sys.stderr)
-    # print(*args, **kwargs, file=sys.stderr)
-    pass
+def debug(*args, ctx=None, **kwargs):
+    if DEBUG:
+        if ctx: args = *args, 'tx', (ctx['Block'], ctx['Index'])
+        print(*args, **kwargs, file=sys.stderr)
 
-def warn(*args, **kwargs):
-    # print(*hexify(args), **kwargs, file=sys.stderr)
+def warn(*args, ctx=None, **kwargs):
+    if ctx: args = *args, 'tx', (ctx['Block'], ctx['Index'])
     print(*args, **kwargs, file=sys.stderr)
     pass
 
+def not_found(*args, ctx=None, **kwargs):
+    # if True:
+    if DEBUG:
+        f = warn if ctx and is_internal(ctx) else debug
+        f(*args, ctx=ctx, **kwargs)
 
 def is_internal(ctx):
     return ctx['Caller'] != ctx['Origin']
@@ -77,7 +85,7 @@ class ExecutionState:
 
 
 def execute_tx(ctx):
-    debug(hexify(ctx['Storage']))
+    debug('Storage', hexify(ctx['Storage']), ctx=ctx)
     state = ExecutionState()
     ok    = execute_msg(ctx, state)
     if ok is None or ok == True:
@@ -101,12 +109,10 @@ def execute_msg(ctx, state):
         with open(f'{d}/h_{h:064x}.evmlike') as fic:
             code = [l[:-1] for l in fic]
     except KeyError as e:
-        f = warn if is_internal(ctx) else debug
-        f('No code mapping for contract', f'{a:040x}', repr(e))
+        not_found('No code mapping for contract', f'{a:040x}', repr(e), ctx=ctx)
         pass
     except FileNotFoundError as e:
-        f = warn if is_internal(ctx) else debug
-        f('No code file for contract', f'{a:040x}', repr(e), f'{d}/h_{h:064x}.evmlike')
+        not_found('No code file for contract', f'{a:040x}', repr(e), f'{d}/h_{h:064x}.evmlike', ctx=ctx)
         pass
     else:
         if code:
@@ -114,12 +120,12 @@ def execute_msg(ctx, state):
             # for c in code: print(c)
             # gather = json.loads(code[-1])
             # print(ctx)
-            debug('---> Executing contract at', f'{a:040x}', 'code hash', f'h_{h:064x}', 'lines', len(lines))
+            debug('---> Executing contract at', f'{a:040x}', 'code hash', f'h_{h:064x}', 'lines', len(lines), ctx=ctx)
             ok = execute_with_jumps(ctx, state, lines)
-            debug('---> Execution complete, ok', ok)
+            debug('---> Execution complete, ok', ok, ctx=ctx)
             return ok
         else:
-            warn('No code in file of', f'h_{h:064x}')
+            not_found('No code in file of', f'h_{h:064x}', ctx=ctx)
             pass
     return None
 
@@ -200,12 +206,12 @@ def execute_with_jumps(ctx, state, lines):
                         # break
                         return False
                 #
-        if state.gaz <= 0:
-            warn('Out of gaz' + ' (internal)' if is_internal(ctx) else '')
-        else:
-            debug('Gaz left:', state.gaz)
+            if state.gaz <= 0:
+                warn('Out of gaz' + (' (internal)' if is_internal(ctx) else ''), ctx=ctx)
+            else:
+                debug('Gaz left:', state.gaz, ctx=ctx)
     except:
-        warn('line', i, line)
+        warn('line', i, line, ctx=ctx)
         raise
     #
     # for i, v in enumerate(regs): debug(f' {i:4} = {v:64x}')
@@ -526,7 +532,7 @@ def _execute(ctx, state, name, avs):
         return UnknownValue()
         #
     elif name == 'FW':
-        debug('!! FW detected !!')
+        warn('!! FW detected !!', ctx=ctx)
         a0, = avs
         return a0
         #
