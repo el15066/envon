@@ -409,11 +409,11 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'JUMP':
         a0, = avs
-        return JumpTarget(f'~{a0:x}', 1)
+        return JumpTarget(f'~{a0:x}' if type(a0) is int else '~', 1)
         #
     elif name == 'JUMPI':
         a0, a1 = avs
-        return JumpTarget(f'~{a0:x}', a1)
+        return JumpTarget(f'~{a0:x}' if type(a0) is int else '~', a1)
         #
     elif name == 'SSTORE':
         a0, a1 = avs
