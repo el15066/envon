@@ -296,15 +296,32 @@ def _execute(ctx, state, name, avs):
         () = avs
         return ctx['Gaslimit']
         #
+    elif name == 'GASLIMIT':
+        () = avs
+        return ctx['Gaslimit']
+        #
+    elif name == 'COINBASE':
+        () = avs
+        return ctx['Coinbase']
+        #
+    elif name == 'MSIZE':
+        () = avs
+        return 2048 # or UnknownValue()
+        #
     elif name == 'RETURNDATASIZE':
         () = avs
         return UnknownValue()
         #
-    elif name == 'MSIZE':
+    elif name == 'CODESIZE':
         () = avs
         return UnknownValue()
         #
-    elif not type(avs[0]) is int:
+    elif name == 'GASPRICE':
+        () = avs
+        return UnknownValue()
+        #
+    elif name == 'PC':
+        () = avs
         return UnknownValue()
         #
     elif name == 'JUMP':
@@ -375,6 +392,16 @@ def _execute(ctx, state, name, avs):
         a0, a1 = avs
         return u256(a0 ** a1) if a1 != 0 else 0
         #
+    elif name == 'SIGNEXTEND':
+        a0, a1 = avs
+        if a0 < 31:
+            m = 1 << (8 * (a0 + 1))
+            r = a1 & (m - 1)
+            s = a1 &  m
+            return u256(r - s)
+        else:
+            return a1
+        #
     elif name == 'LT':
         a0, a1 = avs
         return 1 if a0 < a1 else 0
@@ -382,6 +409,14 @@ def _execute(ctx, state, name, avs):
     elif name == 'GT':
         a0, a1 = avs
         return 1 if a0 > a1 else 0
+        #
+    elif name == 'SLT':
+        a0, a1 = avs
+        return 1 if s256(a0) < s256(a1) else 0
+        #
+    elif name == 'SGT':
+        a0, a1 = avs
+        return 1 if s256(a0) > s256(a1) else 0
         #
     elif name == 'EQ':
         a0, a1 = avs
@@ -434,6 +469,11 @@ def _execute(ctx, state, name, avs):
         state.mem[a1] = a2 & 0xFF
         state.mem_modified = True
         return 0
+    elif name == 'CODECOPY':
+        _, a1, a2, a3 = avs
+        # clear mem, since we don't have runbin here
+        state.mem.set_unknown(a1, a1+a3)
+        return None
         #
     elif name == 'CALL':
         _, a1, a2, a3, a4, a5, a6, a7 = avs
@@ -478,6 +518,10 @@ def _execute(ctx, state, name, avs):
         return sha3(b'BLOCKHASH_' + u256_to_bytes(a0))
         #
     elif name == 'EXTCODESIZE':
+        a0, = avs
+        return UnknownValue()
+        #
+    elif name == 'BALANCE':
         a0, = avs
         return UnknownValue()
         #
