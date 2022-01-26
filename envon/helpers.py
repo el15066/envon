@@ -4,6 +4,11 @@ import subprocess
 
 from functools import wraps
 
+FF32  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+ONE31 = 0x8000000000000000000000000000000000000000000000000000000000000000
+def u256(x): return x & FF32
+def s256(x): return (x ^ ONE31) - ONE31
+
 def count(iterable):
     s = 0
     for _ in iterable: s += 1
