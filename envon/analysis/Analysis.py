@@ -28,6 +28,9 @@ class Analysis:
         #     b = None
         return b
 
+    def get_end(self):
+        return self._blocks[-1].end
+
     def analyze(self, ens, allow_skip):
         assert not self._blocks
         self._prepare_basic_blocks(ens)
