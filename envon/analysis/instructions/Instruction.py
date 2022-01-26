@@ -94,18 +94,24 @@ class Instruction:
             a.remove_use(self)
         self._args.clear()
 
-    def _some_possible_values(self, depth):
-        res = set()
-        if   type(self.valuation) is int: res.add(self.valuation)
-        elif self.is_constant():          res.add(self.get_value())
-        elif self.is_phi() and depth:
-            for a in self._args:
-                res |= a._some_possible_values(depth - 1) # pylint: disable=protected-access
-        return res
+    # def _some_possible_values(self, depth):
+    #     res = set()
+    #     if   type(self.valuation) is int: res.add(self.valuation)
+    #     elif self.is_constant():          res.add(self.get_value())
+    #     elif self.is_phi() and depth:
+    #         for a in self._args:
+    #             res |= a._some_possible_values(depth - 1) # pylint: disable=protected-access
+    #     return res
+
+    # def some_possible_values(self):
+    #     v = self.valuation
+    #     if is_valuation(v) and v.possible_values is not None:
+    #         return self._some_possible_values(5) | set(v.possible_values)
+    #     else:
+    #         return self._some_possible_values(7)
 
     def some_possible_values(self):
         v = self.valuation
-        if is_valuation(v) and v.possible_values is not None:
-            return self._some_possible_values(5) | set(v.possible_values)
-        else:
-            return self._some_possible_values(7)
+        if           type(v) is int:                            return { v }
+        elif is_valuation(v) and v.possible_values is not None: return set(v.possible_values)
+        else:                                                   return {}
