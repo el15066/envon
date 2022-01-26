@@ -25,16 +25,18 @@ def disassemble(runbin):
     res = []
     i   = 0
     l   = len(runbin)
-    while i < l:
-        en = EvmInstruction(i, runbin[i])
-        if en.is_push():
-            s  = en.size()
-            assert i + s < l, (i, s, l)
-            pv = int.from_bytes(runbin[i+1:i+s], 'big')
-            en = EvmInstruction(i, runbin[i], pv)
-            i += s
-        else:
-            i += 1
-        res.append(en)
+    try:
+        while i < l:
+            en = EvmInstruction(i, runbin[i])
+            if en.is_push():
+                s  = en.size()
+                assert i + s < l, (i, s, l)
+                pv = int.from_bytes(runbin[i+1:i+s], 'big')
+                en = EvmInstruction(i, runbin[i], pv)
+                i += s
+            else:
+                i += 1
+            res.append(en)
+    except (AssertionError, IndexError, KeyError, ValueError) as e:
+        log.error('At byte', i, e)
     return res
-
