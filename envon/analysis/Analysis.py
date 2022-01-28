@@ -1,4 +1,6 @@
 
+from bisect import bisect_right
+
 from .BasicBlock   import BasicBlock
 from .instructions import Instruction, Constant
 
@@ -9,8 +11,9 @@ log = Log(__name__)
 class Analysis:
 
     def __init__(self):
-        self._blocks    = []
-        self._block_map = {}
+        self._blocks     = []
+        self._block_list = []
+        self._block_map  = {}
 
     def __iter__(self):
         for b in self._blocks:
@@ -19,6 +22,14 @@ class Analysis:
 
     def get_entry_block(self):
         return self._blocks[0]
+
+    def get_block_containing(self, offset):
+        i = bisect_right(self._block_list, offset) - 1
+        if i >= 0:
+            b = self._blocks[i]
+            if offset < b.end:
+                return b
+        return None
 
     def get_block_at(self, offset):
         if offset == 0:
@@ -52,6 +63,7 @@ class Analysis:
             if i1 > i0:
                 b = BasicBlock(self, i0, i1)
                 self._blocks.append(b)
+                self._block_list.append(i0)
                 self._block_map[i0] = b
 
     def _fill_blocks(self, ens, allow_skip):
