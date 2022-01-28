@@ -64,6 +64,12 @@ class Optimizer:
     def __init__(self):
         self.graph_requested = True
         self.todo_phis       = set()
+        self.link_new_jumps              = True
+        self.unlink_old_jumps            = True
+        self.unlink_certain_jumps        = True
+        self.link_certain_fallthroughs   = True
+        self.link_uncertain_fallthroughs = True
+        self.unlink_certain_fallthroughs = True
 
     def optimize(self, analysis):
         max_i = analysis.get_end() * 20
@@ -380,28 +386,35 @@ class ValuationUpdate:
                 if type(a1) is int:
                     if a1 == 0:
                         log.debug('!! CERTAIN EDGE (NT) !!', b)
-                        can_jump = False
-                        for b2 in list(b.jump_edges()):
-                            b.remove_jump_edge(b2)
+                        if self.optimizer.unlink_certain_jumps:
+                            can_jump = False
+                            for b2 in list(b.jump_edges()):
+                                b.remove_jump_edge(b2)
+                                self._edge_update(res, b2)
                             self._edge_update(res, b2)
                     else:
                         log.debug('!! CERTAIN EDGE (T) !!', b)
-                        b2 = b.remove_fallthrough_edge()
-                        self._edge_update(res, b2)
+                        if self.optimizer.unlink_certain_fallthroughs:
+                            b2 = b.remove_fallthrough_edge()
+                            self._edge_update(res, b2)
+                        #
+                        # jumps will be linked below (can_jump == True)
             #
             if can_jump:
                 dsts = n.get_arg(0).some_possible_values()
-                # add missing edges
-                for dst in dsts:
-                    b2 = b.add_jump_to(dst)
-                    self._edge_update(res, b2)
-                # remove unneeded edges
-                to_remove = [
-                    b2 for b2 in b.jump_edges() if b2.offset not in dsts
-                ]
-                for b2 in to_remove:
-                    b.remove_jump_edge(b2)
-                    self._edge_update(res, b2)
+                # add missing jump edges
+                if self.optimizer.link_new_jumps:
+                    for dst in dsts:
+                        b2 = b.add_jump_to(dst)
+                        self._edge_update(res, b2)
+                # remove unneeded jump edges
+                if self.optimizer.unlink_old_jumps:
+                    to_remove = [
+                        b2 for b2 in b.jump_edges() if b2.offset not in dsts
+                    ]
+                    for b2 in to_remove:
+                        b.remove_jump_edge(b2)
+                        self._edge_update(res, b2)
             #
             if type(a0) is int:
                 res.append(BlockSkipUpdate(b))
