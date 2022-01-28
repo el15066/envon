@@ -1,5 +1,6 @@
 
 import sys
+import json
 import logging
 import argparse
 
@@ -10,6 +11,7 @@ log = Log(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(prog='envon', description='Create EVM-like code using selected instructions of a given EVM runtime binary code file.')
     parser.add_argument('--input',     '-i', type=argparse.FileType('r'),                      help='File containing evm runtime bytecode in hex, typ *.runbin.hex')
+    parser.add_argument('--jumps',     '-j', type=argparse.FileType('r'),                      help='JSON file containing known jump edges')
     parser.add_argument('--skip',      '-s',                              action='store_true', help='Skip blocks with rare instrunctions')
     parser.add_argument('--pick',      '-p', type=str,                    default='',          help='Comma-separated list of instrunction names needed in the output code')
     parser.add_argument('--output',    '-o', type=argparse.FileType('w'), default=sys.stdout,  help='File to write code to, typ *.evmlike, [stdout]')
@@ -32,9 +34,26 @@ def parse_args():
         assert fi is not None
         assert fo is not None
         #
+        log.info('Analyzing', fi.name)
+        log.info('Output is', fo.name)
+        log.info('Skip is', 'enabled' if skip else 'disabled')
+        #
+        kje = None
+        fj  = args.jumps
+        if fj:
+            log.info('Using known jump edge file', fj.name)
+            code_hash = fi.name.rpartition('/')[2].partition('.')[0]
+            # the file is sorted so we could binary search it first and keep only the relevant line
+            t = json.load(fj)
+            kje = t.get(code_hash)
+            if kje is None:
+                log.warning('Code hash', code_hash, 'not found in jump edges file')
+            elif not kje:
+                log.info('Known jump list for code hash', code_hash, 'is empty')
+        #
         pick = {}
         if args.pick:
-            log.info('---- Picking instructions ----')
+            log.info('---- Will pick instructions ----')
             for name in args.pick.split(','):
                 if name.endswith(']'):
                     a = name[:-1].split('[')
@@ -46,9 +65,9 @@ def parse_args():
                 else:
                     log.info(f' -> all args of {name:9}')
                     pick[name] = -1
-            log.info('------------------------------')
+            log.info('--------------------------------')
         #
-        return fi, fo, skip, pick
+        return fi, fo, skip, kje, pick
         #
     except Exception as e: # pylint: disable=broad-except
         log.exception(e)

@@ -14,6 +14,7 @@ class Analysis:
         self._blocks     = []
         self._block_list = []
         self._block_map  = {}
+        self._known_cfg  = False
 
     def __iter__(self):
         for b in self._blocks:
@@ -42,12 +43,20 @@ class Analysis:
     def get_end(self):
         return self._blocks[-1].end
 
-    def analyze(self, ens, allow_skip):
+    def jumps_are_known(self):
+        return self._known_cfg
+
+    def fallthroughs_are_known(self):
+        return False
+
+    def analyze(self, ens, allow_skip, known_jump_edges):
         assert not self._blocks
         self._prepare_basic_blocks(ens)
         self._fill_blocks(ens, allow_skip)
         self._link_fallthroughs()
-        self._link_some_jumps()
+        if known_jump_edges is not None:
+            self._known_cfg = True
+            self._link_known_jumps(known_jump_edges)
 
     def _prepare_basic_blocks(self, ens):
         breaks = [0]
@@ -108,6 +117,15 @@ class Analysis:
         for b in bs:
             if b.ns and b.ns[-1].en().stops_fallthrough(): continue
             b.set_fallthrough()
+
+    def _link_known_jumps(self, known_jump_edges):
+        for [src, dst] in known_jump_edges:
+            b  = self.get_block_containing(src)
+            b2 = self.get_block_at(dst) # just for log
+            if b is not None:
+                b2 = b.add_jump_to(dst)
+            if b2 is None:
+                log.warning(f'Could not add known jump from {src:x} ({b}) to {dst:x} ({b2})')
 
     def _link_some_jumps(self):
         for b in self:

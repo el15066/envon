@@ -5,10 +5,10 @@ from .analysis import Analysis, Optimizer
 from .graph    import make_graph_file, make_graph_memory_file
 from .pick     import print_instructions
 
-fi, fo, skip, pick = parse_args()
+fi, fo, skip, kje, pick = parse_args()
 ens = disassemble_file(fi)
 a   = Analysis()
-a.analyze(ens, skip)
+a.analyze(ens, skip, kje)
 o   = Optimizer()
 o.optimize(a)
 

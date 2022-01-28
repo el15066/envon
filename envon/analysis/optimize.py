@@ -72,6 +72,13 @@ class Optimizer:
         self.unlink_certain_fallthroughs = True
 
     def optimize(self, analysis):
+        self.link_new_jumps              = not analysis.jumps_are_known()
+        self.unlink_old_jumps            = not analysis.jumps_are_known()
+        self.unlink_certain_jumps        = not analysis.jumps_are_known()
+        self.link_certain_fallthroughs   = not analysis.fallthroughs_are_known()
+        self.link_uncertain_fallthroughs = not analysis.fallthroughs_are_known()
+        self.unlink_certain_fallthroughs = not analysis.fallthroughs_are_known()
+        #
         max_i = analysis.get_end() * 20
         log.info('Running optimizer for up to', max_i, 'updates')
         #
