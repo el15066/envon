@@ -385,12 +385,16 @@ class ValuationUpdate:
                 a0, a1 = avs
                 if type(a1) is int:
                     if a1 == 0:
+                        #
                         log.debug('!! CERTAIN EDGE (NT) !!', b)
                         if self.optimizer.unlink_certain_jumps:
                             can_jump = False
                             for b2 in list(b.jump_edges()):
                                 b.remove_jump_edge(b2)
                                 self._edge_update(res, b2)
+                        #
+                        if self.optimizer.link_certain_fallthroughs:
+                            b2 = b.set_fallthrough()
                             self._edge_update(res, b2)
                     else:
                         log.debug('!! CERTAIN EDGE (T) !!', b)
@@ -399,6 +403,10 @@ class ValuationUpdate:
                             self._edge_update(res, b2)
                         #
                         # jumps will be linked below (can_jump == True)
+                else:
+                    if self.optimizer.link_uncertain_fallthroughs:
+                        b2 = b.set_fallthrough()
+                        self._edge_update(res, b2)
             #
             if can_jump:
                 dsts = n.get_arg(0).some_possible_values()
