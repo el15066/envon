@@ -337,6 +337,8 @@ class ValuationUpdate:
             a0, a1 = avs
             if   a0 == 0:                             v = 0
             elif a1 == 0:                             v = 0
+            elif a0 == FF32:                          v = a1
+            elif a1 == FF32:                          v = a0
             elif a0 == a1:                            v = a0
             elif type(a0) is int and type(a1) is int: v = a0 & a1
             #
