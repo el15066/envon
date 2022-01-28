@@ -95,7 +95,7 @@ class Analysis:
         #
         for b in bs:
             if b.ns and b.ns[-1].en().stops_fallthrough(): continue
-            b.set_fallthrough_to(b.end)
+            b.set_fallthrough()
 
     def _link_some_jumps(self):
         for b in self:

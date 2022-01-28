@@ -96,14 +96,19 @@ class BasicBlock:
         self._jump_edges.remove(b)
         b.forget_edge(self)
 
-    def set_fallthrough_to(self, offset):
-        assert self._fallthrough_edge is None
+    def _set_fallthrough_to(self, offset):
+        # assert self._fallthrough_edge is None
         b = self._analysis.get_block_at(offset)
         if b is not None:
-            self._fallthrough_edge = b
-            b.accept_edge(self)
+            if self._fallthrough_edge != b:
+                self._fallthrough_edge = b
+                b.accept_edge(self)
         else:
             log.warning(f'Can\'t find fallthrough to {offset:x}')
+        return b
+
+    def set_fallthrough(self):
+        return self._set_fallthrough_to(self.end)
 
     def remove_fallthrough_edge(self):
         b = self._fallthrough_edge
