@@ -1,5 +1,6 @@
 
 import sys
+import time
 
 from collections import deque #, defaultdict
 
@@ -81,8 +82,6 @@ class Optimizer:
         self.link_uncertain_fallthroughs = not analysis.fallthroughs_are_known()
         self.unlink_certain_fallthroughs = not analysis.fallthroughs_are_known()
         #
-        max_i = analysis.get_end() * 20
-        log.info('Running optimizer for up to', max_i, 'updates')
         log.debug('Optimizer settings:')
         log.debug('  use_possible_values        ', self.use_possible_values)
         log.debug('  link_new_jumps             ', self.link_new_jumps)
@@ -91,6 +90,10 @@ class Optimizer:
         log.debug('  link_certain_fallthroughs  ', self.link_certain_fallthroughs)
         log.debug('  link_uncertain_fallthroughs', self.link_uncertain_fallthroughs)
         log.debug('  unlink_certain_fallthroughs', self.unlink_certain_fallthroughs)
+        #
+        max_i = analysis.get_end() * 20 + 100_000
+        max_t = max_i * 100_000
+        log.info('Running optimizer for up to', max_t // 1_000_000, 'ms, around', max_i, 'updates')
         #
         for _ in general_worklist([
             BlockSkipUpdate(b)
@@ -111,29 +114,33 @@ class Optimizer:
             iu.append(ValuationUpdate(self, h))
         #
         i = 0
+        max_t += time.monotonic_ns()
         # graphs = 1000
         for i, wl in enumerate(general_worklist(iu)):
             #
             if i & 0x7FFF == 0:
                 log.info('Reached', i, 'updates')
+                if i > max_i and time.monotonic_ns() > max_t:
+                    log.error('Time exceeded')
+                    sys.exit(1)
             #
             # if self.graph_requested or i > max_i:
-            if i > max_i:
-                # self.graph_requested = False
-                # do_trace = i > max_i
-                if i > max_i + 100:
-                    log.error('Too many worklist updates')
-                    # wl.clear()
-                    # max_i += 10000
-                    # if max_i > 230000:
-                    #     break
-                    sys.exit(1)
-                make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
-                # if do_trace or graphs > 0:
-                #     graphs -= 1
-                #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
-                # else:
-                #     log.warning('Too many graphs')
+            # if i > max_i:
+            #     # self.graph_requested = False
+            #     # do_trace = i > max_i
+            #     if i > max_i + 100:
+            #         log.error('Too many worklist updates')
+            #         # wl.clear()
+            #         # max_i += 10000
+            #         # if max_i > 230000:
+            #         #     break
+            #         sys.exit(1)
+            #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
+            #     # if do_trace or graphs > 0:
+            #     #     graphs -= 1
+            #     #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
+            #     # else:
+            #     #     log.warning('Too many graphs')
             #
             self.processEvents(wl)
             #
