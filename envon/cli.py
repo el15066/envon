@@ -26,7 +26,7 @@ def parse_args():
             ll = int(ll)
         except ValueError:
             pass
-        logging.basicConfig(format='%(levelname)-5s %(name)-40s %(filename)20s:%(lineno)-4d | %(message)s', level=ll, stream=fl)
+        logging.basicConfig(format='%(levelname)-7s %(name)-40s %(filename)20s:%(lineno)-4d | %(message)s', level=ll, stream=fl)
         #
         fi   = args.input
         fo   = args.output
@@ -53,19 +53,20 @@ def parse_args():
         #
         pick = {}
         if args.pick:
-            log.info('---- Will pick instructions ----')
+            log.info('Will pick', args.pick)
+            log.debug('---- Will pick instructions ----')
             for name in args.pick.split(','):
                 if name.endswith(']'):
                     a = name[:-1].split('[')
                     assert len(a) == 2, name
                     name = a[0]
                     i    = int(a[1])
-                    log.info(f' -> arg {i:4} of {name:9}')
+                    log.debug(f' -> arg {i:4} of {name:9}')
                     pick[name] = i
                 else:
-                    log.info(f' -> all args of {name:9}')
+                    log.debug(f' -> all args of {name:9}')
                     pick[name] = -1
-            log.info('--------------------------------')
+            log.debug('--------------------------------')
         #
         return fi, fo, skip, kje, pick
         #
