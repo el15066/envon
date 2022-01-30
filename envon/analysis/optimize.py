@@ -91,9 +91,9 @@ class Optimizer:
         log.debug('  link_uncertain_fallthroughs', self.link_uncertain_fallthroughs)
         log.debug('  unlink_certain_fallthroughs', self.unlink_certain_fallthroughs)
         #
-        max_i = analysis.get_end() * 20 + 100_000
-        max_t = max_i * 100_000
-        log.info('Running optimizer for up to', max_t // 1_000_000, 'ms, around', max_i, 'updates')
+        i_max = analysis.get_end() * 20 + 100_000
+        t_max = i_max * 100_000
+        log.info('Running optimizer for up to', t_max // 1_000_000, 'ms, around', i_max, 'updates')
         #
         for _ in general_worklist([
             BlockSkipUpdate(b)
@@ -114,25 +114,25 @@ class Optimizer:
             iu.append(ValuationUpdate(self, h))
         #
         i = 0
-        max_t += time.monotonic_ns()
+        t_max += time.monotonic_ns()
         # graphs = 1000
         for i, wl in enumerate(general_worklist(iu)):
             #
             if i & 0x7FFF == 0:
                 log.info('Reached', i, 'updates')
-                if i > max_i and time.monotonic_ns() > max_t:
+                if i > i_max and time.monotonic_ns() > t_max:
                     log.error('Time exceeded')
                     sys.exit(1)
             #
-            # if self.graph_requested or i > max_i:
-            # if i > max_i:
+            # if self.graph_requested or i > i_max:
+            # if i > i_max:
             #     # self.graph_requested = False
-            #     # do_trace = i > max_i
-            #     if i > max_i + 100:
+            #     # do_trace = i > i_max
+            #     if i > i_max + 100:
             #         log.error('Too many worklist updates')
             #         # wl.clear()
-            #         # max_i += 10000
-            #         # if max_i > 230000:
+            #         # i_max += 10000
+            #         # if i_max > 230000:
             #         #     break
             #         sys.exit(1)
             #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
