@@ -514,10 +514,14 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'EXP':
         a0, a1 = avs
-        if a0 > 2 and (a1 > 32 or a0 * a1 > 0xFFFFFFFF):
+        if a1 == 0: return 1
+        if a0 == 0: return 0
+        if a0 == 1: return 1
+        if a0 == 2: return u256(1 << min(a1, 256))
+        if a1 > 256:
             warn('Too large EXP', a0, a1, ctx=ctx)
             return UnknownValue()
-        return u256(a0 ** a1) if a1 != 0 else 0
+        return exp_u256(a0, a1)
         #
     elif name == 'SIGNEXTEND':
         a0, a1 = avs
@@ -669,3 +673,11 @@ def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0,
     state.mem.set_unknown(o0, o1)
     if ok is None: return UnknownValue()
     else:          return 1 if ok else 0
+
+def exp_u256(b, e):
+    r = 1
+    for _ in range(256):
+        if e & 1: r = u256(r * b)
+        b = u256(b * b)
+        e >>= 1
+    return r
