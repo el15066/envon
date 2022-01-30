@@ -160,6 +160,8 @@ class Optimizer:
                 u = PHIRefreshUpdate(self, phi)
                 # log.debug('ev', ev, '->', u)
                 wl.append(u)
+            else:
+                raise NotImplementedError('event: ' + repr(t))
 
 
 class KillBlockUpdate:
