@@ -113,6 +113,7 @@ class Optimizer:
         i = 0
         # graphs = 1000
         for i, wl in enumerate(general_worklist(iu)):
+            #
             if i & 0x7FFF == 0:
                 log.info('Reached', i, 'updates')
             #
@@ -120,13 +121,14 @@ class Optimizer:
             if i > max_i:
                 # self.graph_requested = False
                 # do_trace = i > max_i
-                # if i > max_i + 100:
-                log.error('Too many worklist updates')
+                if i > max_i + 100:
+                    log.error('Too many worklist updates')
                     # wl.clear()
                     # max_i += 10000
                     # if max_i > 230000:
                     #     break
-                sys.exit(1)
+                    sys.exit(1)
+                make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
                 # if do_trace or graphs > 0:
                 #     graphs -= 1
                 #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
