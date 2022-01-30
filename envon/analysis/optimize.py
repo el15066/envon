@@ -83,10 +83,10 @@ class Optimizer:
         log.info('Running optimizer for up to', max_i, 'updates')
         #
         iu = []
-        self.processEvents(iu)
         #
         for b in analysis:
             iu.append(BlockSkipUpdate(b))
+        assert not events.get_and_clear()
         #
         for h in find_heads(analysis):
             iu.append(ValuationUpdate(self, h))

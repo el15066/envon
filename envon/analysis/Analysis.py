@@ -3,6 +3,7 @@ from bisect import bisect_right
 
 from .BasicBlock   import BasicBlock
 from .instructions import Instruction, Constant
+from .events       import events
 
 from envon.helpers import Log
 
@@ -57,6 +58,7 @@ class Analysis:
         if known_jump_edges is not None:
             self._known_cfg = True
             self._link_known_jumps(known_jump_edges)
+        self._refresh_phis()
 
     def _prepare_basic_blocks(self, ens):
         breaks = [0]
@@ -134,3 +136,12 @@ class Analysis:
                 if last.en().is_jump():
                     for dst in last.get_arg(0).some_possible_values():
                         b.add_jump_to(dst)
+
+    def _refresh_phis(self):
+        while True:
+            evs = events.get_and_clear()
+            if not evs: return
+            for ev in evs:
+                assert ev[0] == 'New PHI' # only these events should have happened so early
+                phi = ev[1]
+                phi.refresh()
