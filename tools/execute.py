@@ -594,6 +594,11 @@ def _execute(ctx, state, name, avs):
         state.mem.set_unknown(a1, a1+a3)
         return None
         #
+    elif name == 'RETURNDATACOPY':
+        _, a1, a2, a3 = avs
+        state.mem.set_unknown(a1, a1+a3)
+        return None
+        #
     elif name == 'CALL':
         _, a1, a2, a3, a4, a5, a6, a7 = avs
         return _call_common(ctx, state, ctx['Address'], a1,             a2, a2,               a3, a4, a4+a5, a6, a6+a7)
