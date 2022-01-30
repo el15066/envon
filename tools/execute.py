@@ -433,10 +433,6 @@ def _execute(ctx, state, name, avs):
         () = avs
         return UnknownValue()
         #
-    elif name == 'PC':
-        () = avs
-        return UnknownValue()
-        #
     elif name == 'JUMP':
         a0, = avs
         return JumpTarget(f'~{a0:x}' if type(a0) is int else '~', 1)

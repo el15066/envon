@@ -296,6 +296,9 @@ class ValuationUpdate:
                 elif len(q) == 1: v = _forward(q.pop(), n, avsh)
                 else:             v = Valuation(n, name, avs, avsh, no_value=False, _hash=hash(('PHI', n._id, t)), possible_values=t)
             #
+        elif name == 'PC':
+            v = n.en().offset()
+            #
         elif name == 'ADD':
             a0, a1 = avs
             if   a0 == 0:                             v = a1
