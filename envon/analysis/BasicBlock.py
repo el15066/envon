@@ -72,7 +72,9 @@ class BasicBlock:
         return res
 
     def accept_edge(self, src):
-        assert not src.skip
+        if src.skip:
+            log.warning(self, 'Will not accept edge from skipped block', src)
+            return
         assert src not in self._in_edges
         self._in_edges.append(src)
         log.debug('!! NEW IN EDGE !!', src, self)
@@ -104,7 +106,7 @@ class BasicBlock:
                 self._fallthrough_edge = b
                 b.accept_edge(self)
         else:
-            log.warning(f'Can\'t find fallthrough to {offset:x}')
+            log.warning(self, f'Can\'t find fallthrough to {offset:x}')
         return b
 
     def set_fallthrough(self):

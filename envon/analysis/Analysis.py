@@ -123,6 +123,7 @@ class Analysis:
     def _link_known_jumps(self, known_jump_edges):
         for [src, dst] in known_jump_edges:
             b  = self.get_block_containing(src)
+            if b is None or b.skip: continue
             b2 = self.get_block_at(dst) # just for log
             if b is not None:
                 b2 = b.add_jump_to(dst)
