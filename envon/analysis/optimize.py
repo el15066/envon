@@ -64,6 +64,7 @@ class Optimizer:
     def __init__(self):
         self.graph_requested = True
         self.todo_phis       = set()
+        self.use_possible_values         = True
         self.link_new_jumps              = True
         self.unlink_old_jumps            = True
         self.unlink_certain_jumps        = True
@@ -72,6 +73,7 @@ class Optimizer:
         self.unlink_certain_fallthroughs = True
 
     def optimize(self, analysis):
+        self.use_possible_values         = not analysis.jumps_are_known() or not analysis.fallthroughs_are_known()
         self.link_new_jumps              = not analysis.jumps_are_known()
         self.unlink_old_jumps            = not analysis.jumps_are_known()
         self.unlink_certain_jumps        = not analysis.jumps_are_known()
@@ -251,8 +253,15 @@ class ValuationUpdate:
                             t.add(a)
                         q.add(a)
                 # q.discard(v_old)
-                assert all(type(a) is int for a in t)
-                t = tuple(sorted(t))
+                if self.optimizer.use_possible_values:
+                    assert all(type(a) is int for a in t)
+                    # add the old possible_values to make the set grow only, which is guaranteed to finish
+                    if is_valuation(v_old) and v_old.possible_values is not None:
+                        for aa in v_old.possible_values:
+                            t.add(aa)
+                    t = tuple(sorted(t))
+                else:
+                    t = ()
                 #
                 # q2 = q.copy()
                 if   len(q) == 0: v = None
