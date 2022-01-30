@@ -48,7 +48,8 @@ class Analysis:
         return self._known_cfg
 
     def fallthroughs_are_known(self):
-        return False
+        return True
+        # return False
 
     def analyze(self, ens, allow_skip, known_jump_edges):
         assert not self._blocks
