@@ -83,6 +83,14 @@ class Optimizer:
         #
         max_i = analysis.get_end() * 20
         log.info('Running optimizer for up to', max_i, 'updates')
+        log.debug('Optimizer settings:')
+        log.debug('  use_possible_values        ', self.use_possible_values)
+        log.debug('  link_new_jumps             ', self.link_new_jumps)
+        log.debug('  unlink_old_jumps           ', self.unlink_old_jumps)
+        log.debug('  unlink_certain_jumps       ', self.unlink_certain_jumps)
+        log.debug('  link_certain_fallthroughs  ', self.link_certain_fallthroughs)
+        log.debug('  link_uncertain_fallthroughs', self.link_uncertain_fallthroughs)
+        log.debug('  unlink_certain_fallthroughs', self.unlink_certain_fallthroughs)
         #
         iu = []
         #
