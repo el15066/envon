@@ -92,10 +92,19 @@ class Optimizer:
         log.debug('  link_uncertain_fallthroughs', self.link_uncertain_fallthroughs)
         log.debug('  unlink_certain_fallthroughs', self.unlink_certain_fallthroughs)
         #
-        iu = []
+        for _ in general_worklist([
+            BlockSkipUpdate(b)
+            for b in analysis
+        ]): pass
         #
-        for b in analysis:
-            iu.append(BlockSkipUpdate(b))
+        if analysis.jumps_are_known():
+            for _ in general_worklist([
+                KillBlockUpdate(self, b)
+                for b in find_unreachable_blocks(analysis)
+            ]): pass
+            self.todo_phis.clear()
+        #
+        iu = []
         assert not events.get_and_clear()
         #
         for h in find_heads(analysis):
