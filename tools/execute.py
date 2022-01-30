@@ -179,8 +179,8 @@ def execute_tx(ctx):
             for r in itertools.chain(state.sloads, state.sstores)
             if type(r) is int
         )
+        print(f"Tx {ctx['Block']:8} {ctx['Index']:3} {ctx['Address']:040x}")
         if res:
-            print(f"Tx {ctx['Block']:8} {ctx['Index']:3} {ctx['Address']:040x}")
             print('\n'.join(res))
             debug('\n'.join(res))
 
