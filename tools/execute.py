@@ -571,7 +571,7 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'BYTE':
         a0, a1 = avs
-        return (a1 << (8 * a0)) & 0xFF00000000000000000000000000000000000000000000000000000000000000 if a0 < 32 else 0
+        return (a1 >> (8 * (31 - a0))) & 0xFF if a0 < 32 else 0
     elif name == 'SHL':
         a0, a1 = avs
         return u256(a1 << a0) if a0 < 256 else 0
