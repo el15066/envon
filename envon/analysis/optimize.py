@@ -8,7 +8,7 @@ from .Mempad       import Mempad
 from .Valuation    import Valuation, is_valuation, latest_origin_valuation
 from .events       import events
 
-from envon.graph   import make_graph_file
+from envon         import graph
 from envon.helpers import Log, u256, s256, FF32
 
 log = Log(__name__)
@@ -135,10 +135,10 @@ class Optimizer:
             #         # if i_max > 230000:
             #         #     break
             #         sys.exit(1)
-            #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
+            #     graph.make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
             #     # if do_trace or graphs > 0:
             #     #     graphs -= 1
-            #     #     make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
+            #     #     graph.make_graph_file(analysis, set(u.node for u in wl if hasattr(u, 'node')))
             #     # else:
             #     #     log.warning('Too many graphs')
             #
@@ -554,12 +554,13 @@ class ValuationUpdate:
                 res.append(ValuationUpdate(self.optimizer, r))
         n.valuation = v
         n.is_origin = is_valuation(v) and v.origin == n
-        # if type(v) is int:
-        #     if not n.is_constant():
-        #         n.comment = f'#{v:x}'
-        #     assert v == u256(v), str(n)
-        # else:
-        #     n.comment = str(v)
+        if not graph.DISABLED:
+            if type(v) is int:
+                if not n.is_constant():
+                    n.comment = f'#{v:x}'
+                assert v == u256(v), str(n)
+            else:
+                n.comment = str(v)
         return res
 
     def _edge_update(self, res, b2):
