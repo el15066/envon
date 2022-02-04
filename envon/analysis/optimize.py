@@ -503,13 +503,13 @@ class ValuationUpdate:
             # if v is None:
             #     v = Valuation(n, 'MLOAD', (), avsh, _hash=hash(('MLOAD', n._id)))
             #
-        elif name == 'SHA3':
-            m, a1, a2 = avs
-            if type(a1) is int and type(a2) is int:
-                ans = m.load_region(a1, a2)
-                if ans is not None:
-                    v = Valuation(n, 'SHA3i', tuple(an.valuation for an in ans), avsh)
-            #
+        # elif name == 'SHA3':
+        #     m, a1, a2 = avs
+        #     if type(a1) is int and type(a2) is int:
+        #         ans = m.load_region(a1, a2)
+        #         if ans is not None:
+        #             v = Valuation(n, 'SHA3i', tuple(an.valuation for an in ans), avsh)
+        #     #
         elif name in ('CALL', 'CALLCODE'):
             m, a1, a2, a3, _, a5, a6, a7 = avs
             if type(a6) is int and type(a7) is int:
