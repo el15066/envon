@@ -658,9 +658,10 @@ class MarkByValuationUpdate:
             for av in v.avs:
                 av = latest_origin_valuation(av)
                 if av is None:
-                    res = []
-                    # TODO: maybe add mark revert update(s) ?
-                    break
+                    # res = []
+                    # # TODO: maybe add mark revert update(s) ?
+                    # break
+                    pass # it can be a phi
                 elif type(av) is int: n._block.marked_ints.add(av)
                 else:                 res.append(MarkByValuationUpdate(av))
         return res
@@ -680,9 +681,10 @@ class MarkDepsByValuationUpdate:
         for av in v.avs:
             av = latest_origin_valuation(av)
             if av is None:
-                res = []
-                # TODO: maybe add mark revert update(s) ?
-                break
+                # res = []
+                # # TODO: maybe add mark revert update(s) ?
+                # break
+                pass # it can be a phi
             elif type(av) is int:
                 n._block.marked_ints.add(av)
             else:
