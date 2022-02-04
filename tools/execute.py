@@ -7,6 +7,8 @@ from Crypto.Hash import keccak
 
 from envon.helpers import Log, u256, s256
 
+from IIT import has_rd
+
 log = Log(__name__)
 
 def u256_to_bytes(x):
@@ -265,10 +267,14 @@ def execute_with_jumps(ctx, state, lines):
                             v = int(name[1:], 16)
                             debug(f'  {on:4}   =', hexify(v))
                         else:
-                            avs = tuple(regs.get(a) for a in args)
+                            avs = tuple(regs.get(a) if a is not None else UnknownValue() for a in args)
                             debug(f'  {on:4} ', name, hexify(avs), args)
+                            if name != 'PHI':
+                                assert all(a is not None for a in avs)
                             v   = _execute(ctx, state, name, avs)
                             debug(f'  {on:4}   =', hexify(v))
+                            if has_rd(name):
+                                assert v is not None
                         #
                         state.mem.debug()
                         #
