@@ -5,7 +5,7 @@ import time
 from collections import deque #, defaultdict
 
 from .Mempad       import Mempad
-from .Valuation    import Valuation, is_valuation, latest_origin_valuation
+from .Valuation    import Valuation, is_valuation, latest_valuation
 from .events       import events
 
 from envon         import graph
@@ -210,8 +210,8 @@ class PHIRefreshUpdate:
         return [ValuationUpdate(self.optimizer, phi)]
 
 
-def _forward(v, n, avsh):
-    return v.forward(n, avsh) if is_valuation(v) else v
+def _forward(v, n, avs, avsh):
+    return v.forward(n, avs, avsh) if is_valuation(v) else v
 
 class ValuationUpdate:
 
@@ -293,7 +293,7 @@ class ValuationUpdate:
                 #
                 # q2 = q.copy()
                 if   len(q) == 0: v = None
-                elif len(q) == 1: v = _forward(q.pop(), n, avsh)
+                elif len(q) == 1: v = _forward(q.pop(), n, avs, avsh)
                 else:             v = Valuation(n, name, avs, avsh, no_value=False, _hash=hash(('PHI', n._id, t)), possible_values=t)
             #
         elif name == 'PC':
@@ -656,7 +656,7 @@ class MarkByValuationUpdate:
             #     res.append(MarkByValuationUpdate(v.origin))
             # else:
             for av in v.avs:
-                av = latest_origin_valuation(av)
+                av = latest_valuation(av)
                 if av is None:
                     # res = []
                     # # TODO: maybe add mark revert update(s) ?
@@ -679,7 +679,7 @@ class MarkDepsByValuationUpdate:
         v   = self.valuation
         n   = v.node
         for av in v.avs:
-            av = latest_origin_valuation(av)
+            av = latest_valuation(av)
             if av is None:
                 # res = []
                 # # TODO: maybe add mark revert update(s) ?
