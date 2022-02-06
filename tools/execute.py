@@ -683,6 +683,7 @@ def _execute(ctx, state, name, avs):
         state.sloads.add(a0)
         state.sload_n += 1
         debug(f' SLOAD {a0:#064x}', end='')
+        return UnknownValue()
         # print('\n\n\n\n\n', hexify(ctx['Address']), hexify(a0), hexify(ctx['Storage'][ctx['Address']]), '\n\n\n\n')
         v = ctx['Storage'][ctx['Address']].get(a0)
         return v if v is not None else UnknownValue()
