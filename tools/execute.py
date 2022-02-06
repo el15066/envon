@@ -690,7 +690,9 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'BLOCKHASH':
         a0, = avs
-        return sha3(b'BLOCKHASH_' + u256_to_bytes(a0))
+        delta = ctx['Block'] - a0 - 1
+        if 0 <= delta < 256: return sha3(b'BLOCKHASH_abcdef01234567' + a0.to_bytes(8, 'big'))
+        else:                return 0
         #
     elif name == 'EXTCODESIZE':
         a0, = avs
