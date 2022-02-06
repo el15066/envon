@@ -174,7 +174,8 @@ def execute_tx(ctx):
     debug('Storage', hexify(ctx['Storage']), ctx=ctx)
     state = ExecutionState()
     ok    = execute_msg(ctx, state)
-    if ok is None or ok == True:
+    # if ok is None or ok == True:
+    if True:
         res = list(
             u256_to_bytes(r).hex()
             for r in (state.sloads | state.sstores)
