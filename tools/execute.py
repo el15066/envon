@@ -32,7 +32,10 @@ UNKNOWN_SHA = sha3(b'UNKNOWN')
 
 class hexint(int):
     def __repr__(self):
-        return '#' + hex(self)[2:]
+        if self == 0: return '#'
+        s = hex(self)[2:]
+        if len(s) % 2 != 0: s = '0' + s
+        return '#' + s
 
 def hexify(x):
     if   type(x) is int:      return hexint(x)
@@ -152,6 +155,8 @@ class ExecutionState:
         self.phiindex = 0
         self.sloads   = set()
         self.sstores  = set()
+        self.sload_n  = 0
+        self.sstore_n = 0
         self.mem      = Memory()
         self.saved_regs      = {0: 0}
         self.saved_cur_block = 'ENTRY'
@@ -185,7 +190,8 @@ def execute_tx(ctx):
         print(f"Tx {ctx['Block']:8} {ctx['Index']:3} {ctx['Address']:040x}")
         if res:
             print('\n'.join(res))
-            debug('\n'.join(res))
+            # debug('\n'.join(res))
+            debug(state.sload_n, state.sstore_n)
 
 def execute_msg(ctx, state):
     a = None
@@ -208,7 +214,7 @@ def execute_msg(ctx, state):
             # for c in code: print(c)
             # gather = json.loads(code[-1])
             # print(ctx)
-            debug('---> Executing contract at', f'{a:040x}', 'code hash', f'h_{h:064x}', 'lines', len(lines), ctx=ctx)
+            debug('---> Executing contract at', f'{a:040x}', 'code hash', f'h_{h:064x}', 'lines', len(lines), 'calldata', ctx['Calldata'].hex(), ctx=ctx)
             ok = execute_with_jumps(ctx, state, lines)
             debug('---> Execution complete, ok', ok, ctx=ctx)
             return ok
@@ -244,7 +250,11 @@ def execute_with_jumps(ctx, state, lines):
                 if line[0] == '~':
                     block, _, _ = line.partition(' | ')
                     _, phimap   = block_map[block]
-                    debug(block, '<-', cur_block)
+                    # debug(block, '<-', cur_block)
+                    on = int(block[1:], 16)
+                    name = 'BLOCKID'
+                    debug(f'{state.gaz:5}| {on:4} = {name:>20}  {block}')
+                    debug(f'{state.gaz:5}| {on:4} = {" ?":>20}')
                     try:
                         state.phiindex = phimap.index(cur_block)
                         cur_block      = block
@@ -266,15 +276,19 @@ def execute_with_jumps(ctx, state, lines):
                         if name[0] == '#':
                             assert not args
                             v = int(name[1:], 16)
-                            debug(f'  {on:4}   =', hexify(v))
+                            name = 'CONSTANT_' + str(len(name)//2).rjust(2)
+                            debug(f'{state.gaz:5}| {on:4} = {name:>20}')
+                            debug(f'{state.gaz:5}| {on:4} = {str(hexify(v)):>20}')
                         else:
                             avs = tuple(regs.get(a) if a is not None else UnknownValue() for a in args)
-                            debug(f'  {on:4} ', name, hexify(avs), args)
+                            debug(f'{state.gaz:5}| {on:4} = {name:>20} ', *(hexify(a) for a in avs), args, end='')
+                            # debug(f'{state.gaz:5}| {on:4} = {name:>20} ', end='')
                             if name != 'PHI':
                                 assert all(a is not None for a in avs)
                             v   = _execute(ctx, state, name, avs)
-                            debug(f'  {on:4}   =', hexify(v))
-                            if has_rd(name):
+                            debug()
+                            debug(f'{state.gaz:5}| {on:4} = {str(hexify(v)):>20}')
+                            if name != 'PHI' and has_rd(name):
                                 assert v is not None
                         #
                         state.mem.debug()
@@ -452,7 +466,9 @@ def _execute(ctx, state, name, avs):
         a0, a1 = avs
         if type(a0) is int:
             state.sstores.add(a0)
+            state.sstore_n += 1
             ctx['Storage'][ctx['Address']][a0] = a1
+            debug(f' SSTORE {a0:#064x}', end='')
         return None
         #
     elif name == 'MSTORE':
@@ -641,6 +657,9 @@ def _execute(ctx, state, name, avs):
     elif name == 'SLOAD':
         a0, = avs
         state.sloads.add(a0)
+        state.sload_n += 1
+        debug(f' SLOAD {a0:#064x}', end='')
+        # print('\n\n\n\n\n', hexify(ctx['Address']), hexify(a0), hexify(ctx['Storage'][ctx['Address']]), '\n\n\n\n')
         v = ctx['Storage'][ctx['Address']].get(a0)
         return v if v is not None else UnknownValue()
         #
@@ -681,6 +700,8 @@ def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0,
     new_state.gaz        = state.gaz - reserved_gaz
     ok                   = execute_msg(new_ctx, new_state)
     state.gaz            = new_state.gaz + reserved_gaz
+    state.sload_n       += new_state.sload_n
+    state.sstore_n      += new_state.sstore_n
     # clear resulting mem, since we don't currently support return value
     state.mem.set_unknown(o0, o1)
     if ok is None: return UnknownValue()
