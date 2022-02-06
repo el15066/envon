@@ -1,7 +1,6 @@
 
 import sys
 import random
-import itertools
 
 from Crypto.Hash import keccak
 
@@ -176,11 +175,12 @@ def execute_tx(ctx):
     state = ExecutionState()
     ok    = execute_msg(ctx, state)
     if ok is None or ok == True:
-        res = set(
+        res = list(
             u256_to_bytes(r).hex()
-            for r in itertools.chain(state.sloads, state.sstores)
+            for r in (state.sloads | state.sstores)
             if type(r) is int
         )
+        res.sort()
         print(f"Tx {ctx['Block']:8} {ctx['Index']:3} {ctx['Address']:040x}")
         if res:
             print('\n'.join(res))
