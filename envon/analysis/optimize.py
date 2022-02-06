@@ -299,6 +299,9 @@ class ValuationUpdate:
         elif name == 'PC':
             v = n.en().offset()
             #
+        elif name == 'CHAINID':
+            v = 1
+            #
         elif name == 'ADD':
             a0, a1 = avs
             if   a0 == 0:                             v = a1
