@@ -14,10 +14,10 @@ def print_instructions(output_file, analysis, selections):
         for n in b:
             name = n.en().name()
             if name in selections:
-                ai = selections[name]
-                v  = n.valuation
+                new_name, ai = selections[name]
+                v            = n.valuation
                 if ai >= 0:
-                    v = v.one_arg_form(ai)
+                    v.node.valuation = v.one_arg_form(new_name, ai)
                 vs.append(v)
     #
     print_calc_with_jumps(output_file, analysis, vs)

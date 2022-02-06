@@ -56,16 +56,21 @@ def parse_args():
             log.info('Will pick', args.pick)
             log.debug('---- Will pick instructions ----')
             for name in args.pick.split(','):
-                if name.endswith(']'):
-                    a = name[:-1].split('[')
-                    assert len(a) == 2, name
-                    name = a[0]
-                    i    = int(a[1])
-                    log.debug(f' -> arg {i:4} of {name:9}')
-                    pick[name] = i
+                abc, _, d = name.partition('=')
+                ab,  _, c =  abc.partition(']')
+                a,   _, b =   ab.partition('[')
+                assert not c, name
+                name     = a
+                _ai      = b
+                new_name = d
+                if _ai:
+                    assert new_name, name
+                    ai = int(_ai)
+                    log.debug(f' -> arg {ai:4} of {name:15}' + ('as '+new_name if new_name else ' '))
+                    pick[name] = new_name, ai
                 else:
-                    log.debug(f' -> all args of {name:9}')
-                    pick[name] = -1
+                    log.debug(f' -> all args of {  name:15}')
+                    pick[name] =     None, -1
             log.debug('--------------------------------')
         #
         return fi, fo, skip, kje, pick

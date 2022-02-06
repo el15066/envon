@@ -32,10 +32,10 @@ class Valuation:
         return s
 
     def forward(self, n, avs, avsh):
-        return Valuation(     n,    'FW',            avs,                         avsh, no_value=False,         origin=self.origin, _hash=self._hash, possible_values=self.possible_values)
+        return Valuation(     n,    'FW',       avs,                   avsh, no_value=False,         origin=self.origin, _hash=self._hash, possible_values=self.possible_values)
 
-    def one_arg_form(self, arg_index):
-        return Valuation(self.node, '=' + self.name, (self.avs[arg_index],), self.avsh, no_value=self.no_value, origin=self.origin, _hash=self._hash, possible_values=self.possible_values)
+    def one_arg_form(self, name, arg_index):
+        return Valuation(self.node, name, (self.avs[arg_index],), self.avsh, no_value=self.no_value, origin=self.origin, _hash=self._hash, possible_values=self.possible_values)
 
 
 def is_valuation(v):
