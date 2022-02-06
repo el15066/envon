@@ -693,8 +693,10 @@ def _execute(ctx, state, name, avs):
         raise UnknownInstructionError(name)
 
 def _call_common(ctx, state, caller, gaslim, addr, code_addr, value, i0, i1, o0, o1):
-    if value > ctx['Callvalue']:
-        return 0
+    # if value > ctx['Callvalue']: # we can't say that, there might be balance
+    #     debug()
+    #     warn('Not enough ETH for call')
+    #     return 0
     new_ctx              = ctx.copy()
     new_ctx['Gaslimit']  = min(gaslim, ctx['Gaslimit'])
     new_ctx['Address']   =      addr & ADDR_MASK
