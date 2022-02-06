@@ -74,8 +74,16 @@ class MarkedONsUpdate:
         b.marked_ons = ons
         for v in chain(
             b.marked_ints,
-            (latest_origin_valuation(n.valuation) for n in b if n.marked and not n.is_memphi())
+            (
+                latest_origin_valuation(n.valuation)
+                for n in b
+                if n.marked and not n.is_memphi() and n.valuation.name != 'FW' # prevent a FW to a later instruction in same block
+            )
         ):
+            # if is_valuation(v) and v.name in 'PHI' and all(av is None for av in v.avs): continue
+            # check if it shouldn't/can't be added here
+            if is_valuation(v) and v.node._block != b: continue # TODO this may be assert False (needs testing)
+            #
             on = self.ctx.get_on(v)
             if on not in avail_ons:
                 avail_ons.add(on)
