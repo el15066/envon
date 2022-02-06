@@ -235,6 +235,7 @@ def execute_with_jumps(ctx, state, lines):
     state_q = [state]
     i_max   = len(lines) - 1
     try:
+        state.gaz += 1 # compensate for ~0 | ENTRY
         while state_q:
             state     = state_q.pop()
             regs      = state.saved_regs
@@ -300,6 +301,7 @@ def execute_with_jumps(ctx, state, lines):
                             if t:
                                 if t in block_map:
                                     i, _ = block_map[t]
+                                    state.gaz += 1 # compensate block header
                                 else:
                                     break
                             # t = v.target
