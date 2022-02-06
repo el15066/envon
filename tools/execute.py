@@ -514,13 +514,13 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'CALLDATALOAD':
         a0, = avs
-        if a0 < 65536: return bytes_to_u256(ctx['Calldata'][a0:a0+32].ljust(32))
+        if a0 < 65536: return bytes_to_u256(ctx['Calldata'][a0:a0+32].ljust(32, b'\x00'))
         else:          return UnknownValue()
         #
     elif name == 'CALLDATACOPY':
         _, a1, a2, a3 = avs
         if a2+a3 < 65536:
-            state.mem.set(a1, a1+a3, ctx['Calldata'][a2:a2+a3].ljust(a3))
+            state.mem.set(a1, a1+a3, ctx['Calldata'][a2:a2+a3].ljust(a3, b'\x00'))
         return None
         #
     elif name == 'ADD':
