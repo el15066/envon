@@ -462,6 +462,15 @@ def _execute(ctx, state, name, avs):
         a0, a1 = avs
         return JumpTarget(f'~{a0:x}' if type(a0) is int else '~', a1)
         #
+    elif name == 'STOUCH':
+        a0, = avs
+        if type(a0) is int:
+            state.sstores.add(a0)
+            state.sstore_n += 1
+            ctx['Storage'][ctx['Address']][a0] = UnknownValue()
+            debug(f' STOUCH {a0:#064x}', end='')
+        return None
+        #
     elif name == 'SSTORE':
         a0, a1 = avs
         if type(a0) is int:
