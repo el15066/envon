@@ -79,6 +79,7 @@ class Memory:
         self.modified   = False
         self.unknown_i0 = -1
         self.unknown_i1 = -1
+        self.msize      = 0
 
     def debug(self):
         if DEBUG and self.modified:
@@ -88,19 +89,31 @@ class Memory:
                 if w != ZEROS:
                     debug(f'  mem {j:4x}  {w.hex()}')
 
+    def _update_msize(self, i1):
+        m1 = self.msize
+        m2 = (i1 + 31) & ~31
+        if m2 > m1:
+            self._data[m1:m2] = bytes(m2-m1)
+            self.msize        = m2
+
     def _overlaps_unknown(self, i0, i1):
-        return i1 > len(self._data) # or i0 < self.unknown_i1 and i1 > self.unknown_i0
+        if i1 > len(self._data): return True
+        self._update_msize(i1)
+        # return i0 < self.unknown_i1 and i1 > self.unknown_i0
+        return False
 
     def _remove_unknown(self, i0, i1):
         if i1 > len(self._data): return False
-        # self.modified = True
+        self._update_msize(i1)
+        self.modified = True
         # if i0 <= self.unknown_i0 <  i1: self.unknown_i0 = min(i1, self.unknown_i1)
         # if i0 <  self.unknown_i1 <= i1: self.unknown_i1 = max(i0, self.unknown_i0)
         return True
 
     def _add_unknown(self, i0, i1):
         if i1 > len(self._data): return False
-        # self.modified = True
+        self._update_msize(i1)
+        self.modified = True
         # if i0 < self.unknown_i1 and i1 > self.unknown_i0:
         #     self.unknown_i0 = min(i0, self.unknown_i0)
         #     self.unknown_i1 = max(i1, self.unknown_i1)
@@ -442,7 +455,7 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'MSIZE':
         () = avs
-        return 2048 # or UnknownValue()
+        return state.mem.msize
         #
     elif name == 'RETURNDATASIZE':
         () = avs
