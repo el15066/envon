@@ -127,7 +127,9 @@ class Analysis:
             if b is None or b.skip: continue
             b2 = self.get_block_at(dst) # just for log
             if b is not None:
-                b2 = b.add_jump_to(dst)
+                # skip if already set as fallthrough
+                if b.fallthrough_edge() != b2:
+                    b2 = b.add_jump_to(dst)
             if b2 is None:
                 log.warning(f'Could not add known jump from {src:x} ({b}) to {dst:x} ({b2})')
 
