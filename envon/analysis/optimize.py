@@ -60,6 +60,15 @@ def find_unreachable_blocks(analysis):
         if  b not in seen
     ]
 
+def find_blocks_without_terminator_valuation(analysis):
+    res = []
+    for b in analysis:
+        n = b.get_jump()
+        if n is not None and n.valuation is None:
+            # a jump without valuation means this block is effectively unreachable (connected but impossible)
+            res.append(b)
+    return res
+
 class Optimizer:
 
     def __init__(self):
@@ -156,6 +165,11 @@ class Optimizer:
                         for phi in self.todo_phis
                     ])
                     self.todo_phis.clear()
+                if not wl:
+                    wl.extend([
+                        KillBlockUpdate(self, b)
+                        for b in find_blocks_without_terminator_valuation(analysis)
+                    ])
                 # _debug(wl)
         #
         log.info('Optimizer complete after', i, 'updates')
