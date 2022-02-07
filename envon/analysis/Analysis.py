@@ -48,7 +48,7 @@ class Analysis:
         return self._known_cfg
 
     def fallthroughs_are_known(self):
-        return True
+        return self._known_cfg
         # return False
 
     def analyze(self, ens, allow_skip, known_jump_edges):
@@ -118,18 +118,24 @@ class Analysis:
         if bs[-1] is self._blocks[-1]: bs.pop()
         #
         for b in bs:
-            if b.ns and b.ns[-1].en().stops_fallthrough(): continue
+            if b.ns and (
+                b.ns[-1].en().stops_fallthrough() or
+                b.ns[-1].en().is_jump() and self.fallthroughs_are_known() # its JUMPI, but we already have fallthroughs for those
+            ): continue
             b.set_fallthrough()
 
     def _link_known_jumps(self, known_jump_edges):
         for [src, dst] in known_jump_edges:
+            #
             b  = self.get_block_containing(src)
-            if b is None or b.skip: continue
             b2 = self.get_block_at(dst) # just for log
+            #
             if b is not None:
-                # skip if already set as fallthrough
-                if b.fallthrough_edge() != b2:
-                    b2 = b.add_jump_to(dst)
+                if b.skip:                             continue
+                if dst == b.fallthrough_edge().offset: continue # already set as fallthrough
+                if dst == b.end: b2 = b.set_fallthrough()
+                else:            b2 = b.add_jump_to(dst)
+            #
             if b2 is None:
                 log.warning(f'Could not add known jump from {src:x} ({b}) to {dst:x} ({b2})')
 
