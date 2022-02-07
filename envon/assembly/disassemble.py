@@ -8,7 +8,7 @@ log = Log(__name__)
 def disassemble_file(f):
     c = f.read()
     c = bytes.fromhex(c.strip())
-    c = strip_metadata(c)
+    # c = strip_metadata(c)
     return disassemble(c)
 
 def strip_metadata(runbin):
@@ -38,5 +38,5 @@ def disassemble(runbin):
                 i += 1
             res.append(en)
     except (AssertionError, IndexError, KeyError, ValueError) as e:
-        log.error('At byte', i, e)
+        log.info('At byte', i, e)
     return res
