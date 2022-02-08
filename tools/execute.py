@@ -435,7 +435,7 @@ def _execute(ctx, state, name, avs):
         #
     elif name == 'CHAINID':
         () = avs
-        return ctx['Chainid']
+        return 1
         #
     elif name == 'DIFFICULTY':
         () = avs
