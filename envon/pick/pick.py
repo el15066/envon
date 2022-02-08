@@ -16,6 +16,9 @@ def print_instructions(output_file, analysis, selections):
             if name in selections:
                 new_name, ai = selections[name]
                 v            = n.valuation
+                if not v:
+                    log.warning('Skipping picked instruction because it doesn\'t have valuation:', n)
+                    continue
                 if ai >= 0:
                     v.node.valuation = v.one_arg_form(new_name, ai)
                 vs.append(v)
