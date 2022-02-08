@@ -5,6 +5,7 @@ import logging
 import argparse
 
 from envon.helpers import Log
+from envon         import graph
 
 log = Log(__name__)
 
@@ -26,6 +27,8 @@ def parse_args():
             ll = int(ll)
         except ValueError:
             pass
+        if 'DEBUG' in ll:
+            graph.config.DISABLED = False
         logging.basicConfig(format='%(levelname)-7s %(name)-40s %(filename)20s:%(lineno)-4d | %(message)s', level=ll, stream=fl)
         #
         fi   = args.input

@@ -25,8 +25,8 @@ class Valuation:
 
     def __str__(self):
         s = 'V' + repr(self.node) + '-' + self.name + '(' + ', '.join(f'#{v:x}' if type(v) is int else repr(v) for v in self.avs) + ')-' + hex(self._hash&0xfffff)[1:6]
-        if self.possible_values:
-            s += repr(self.possible_values)
+        # if self.possible_values:
+        #     s += repr(self.possible_values)
         if self.no_value:
             s += '-NV'
         return s

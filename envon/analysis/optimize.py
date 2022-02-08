@@ -13,9 +13,8 @@ from envon.helpers import Log, u256, s256, FF32
 
 log = Log(__name__)
 
-# def _debug(*args, **kwargs):
-#     # print(*args, **kwargs, file=sys.stderr)
-#     pass
+def _debug(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
 
 def general_worklist(initial_updates):
     wl = deque()
@@ -104,6 +103,8 @@ class Optimizer:
         t_max = i_max * 100_000
         log.info('Running optimizer for up to', t_max // 1_000_000, 'ms, around', i_max, 'updates')
         #
+        graph.make_graph_file(analysis)
+        #
         for _ in general_worklist([
             BlockSkipUpdate(b)
             for b in analysis
@@ -121,6 +122,8 @@ class Optimizer:
         #
         for h in find_heads(analysis):
             iu.append(ValuationUpdate(self, h))
+        #
+        graph.make_graph_file(analysis, set(u.node for u in iu))
         #
         i = 0
         t_max += time.monotonic_ns()
@@ -571,7 +574,7 @@ class ValuationUpdate:
                 res.append(ValuationUpdate(self.optimizer, r))
         n.valuation = v
         n.is_origin = is_valuation(v) and v.origin == n
-        if not graph.DISABLED:
+        if not graph.config.DISABLED:
             if type(v) is int:
                 if not n.is_constant():
                     n.comment = f'#{v:x}'
