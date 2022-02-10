@@ -38,6 +38,7 @@ IIT = {
     'BLOCKID':        (  34,  1,  1, False, False ),
     'JUMP':           (  35,  1,  1, False, False ),
     'JUMPI':          (  36,  2,  2, False, False ),
+    'RETURN':         (  37,  2,  2, False,  True ),
     'CODESIZE':       (  40,  1,  1,  True, False ),
     'RETURNDATASIZE': (  41,  1,  1,  True, False ),
     'ADDRESS':        (  48,  1,  1,  True, False ),
@@ -99,6 +100,14 @@ IIT = {
     'DELEGATECALL':   ( 174,  7,  7,  True,  True ),
     'STATICCALL':     ( 175,  7,  7,  True,  True ),
 }
+
+def _test():
+    t = -1
+    for k, v in IIT.items():
+        assert t < v[0] < 256, k
+        t = v[0]
+
+_test()
 
 def get_opcode(name):
     opcode, _, _, _, _ = IIT[name]
