@@ -128,11 +128,11 @@ class Analysis:
         for [src, dst] in known_jump_edges:
             #
             b  = self.get_block_containing(src)
-            b2 = self.get_block_at(dst) # just for log
+            b2 = self.get_block_at(dst)
             #
             if b is not None:
-                if b.skip:                             continue
-                if dst == b.fallthrough_edge().offset: continue # already set as fallthrough
+                if b.skip:                      continue
+                if b2  == b.fallthrough_edge(): continue # already set as fallthrough
                 if dst == b.end: b2 = b.set_fallthrough()
                 else:            b2 = b.add_jump_to(dst)
             #
