@@ -120,8 +120,9 @@ def process(f):
     #
     return offs + bt + code
 
-def main(ofname, dirname):
+def main(ofname, dirname, tag):
     with open(ofname, 'w') as fo:
+        fo.write('info ' + dirname + ',' + tag + '\n')
         for path, _, fnames in os.walk(dirname):
             for fname in fnames:
                 fullname = path + fname
@@ -145,5 +146,6 @@ def main(ofname, dirname):
 
 if __name__ == '__main__':
     import sys
-    main(ofname=sys.argv[1], dirname=sys.argv[2])
+    tag = sys.argv[3] if len(sys.argv) > 3 else 'no_tag'
+    main(ofname=sys.argv[1], dirname=sys.argv[2]+'/', tag=tag)
 
