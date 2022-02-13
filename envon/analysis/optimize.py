@@ -17,11 +17,16 @@ def _debug(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
 
 def general_worklist(initial_updates):
-    wl = deque()
+    # wl = deque()
+    wl = []
     wl.extend(initial_updates)
+    wl.reverse() # crucial with pop() instead of popleft()
+    #
     seen = set(u.node for u in wl if type(u) is ValuationUpdate)
     while wl:
-        u = wl.popleft()
+        # u = wl.popleft()
+        u = wl.pop()
+        #
         if type(u) is ValuationUpdate: seen.discard(u.node)
         # _debug('u', u)
         new_updates = []
@@ -32,8 +37,10 @@ def general_worklist(initial_updates):
                 seen.add(u2.node)
             new_updates.append(u2)
         # _debug('u', u, '->', new_updates)
-        # wl.extend(new_updates)   # BFS
-        wl.extendleft(new_updates) # DFS
+        # new_updates.reverse()
+        wl.extend(new_updates)       # DFS
+        # wl.extend(new_updates)     # BFS if popleft()
+        # wl.extendleft(new_updates) # DFS if popleft()
         yield wl
 
 def find_heads(analysis):
