@@ -38,5 +38,5 @@ def disassemble(runbin):
                 i += 1
             res.append(en)
     except (AssertionError, IndexError, KeyError, ValueError) as e:
-        log.info('At byte', i, e)
+        log.info('At byte', i, repr(e))
     return res
