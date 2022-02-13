@@ -52,6 +52,7 @@ IIT = {
     'NUMBER':         (  56,  1,  1,  True, False ),
     'DIFFICULTY':     (  57,  1,  1,  True, False ),
     'GASLIMIT':       (  58,  1,  1,  True, False ),
+    'SELFBALANCE':    (  59,  1,  1,  True, False ),
     'GAS':            (  64,  1,  1,  True, False ),
     'MSIZE':          (  65,  1,  1,  True, False ),
     'BALANCE':        (  72,  2,  2,  True, False ),
