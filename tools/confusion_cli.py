@@ -1,6 +1,7 @@
 import sys
 import argparse
 
+# DEBUG = True
 DEBUG = False
 
 class Reader:
@@ -95,7 +96,7 @@ def main(fa, fp):
         totals[1] += p
         totals[2] += a
         totals[3] += c
-        if p + a - c > 10:
+        if a > 100000 or a-c > 30000 or p-c > 30000:
             print('--- Contract ' + k)
             print(f'  Coverage: {100*  c  /a if a else -1 :5.1f} %  missed: {a-c:7}')
             print(f'  Overhead: {100*(p-c)/a if a else -1 :5.0f} %  added:  {p-c:7}')
