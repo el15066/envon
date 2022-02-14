@@ -4,6 +4,8 @@ import json
 import logging
 import argparse
 
+# from bisect import bisect_right
+
 from envon.helpers import Log
 from envon         import graph
 
@@ -46,13 +48,29 @@ def parse_args():
         if fj:
             log.info('Using known jump edge file', fj.name)
             code_hash = fi.name.rpartition('/')[2].partition('.')[0]
-            # the file is sorted so we could binary search it first and keep only the relevant line
-            t = json.load(fj)
-            kje = t.get(code_hash)
+            #
+            kje = None
+            #
+            # The file is sorted so we can binary search it first and keep only the relevant line,
+            # but this needs to be done without reading all lines.
+            # "h_001dd42ca6f50d3cb606eca69dc5127ee42608656b4db9b5ac7fc0485bccd282":[[1382,4228],[97,98],[108,109],[1311,1316],[141,142]],\n
+            # lines = fj.readlines()
+            # i     = bisect_right(lines[1:-1], '"' + code_hash) + 1 # won't exist exactly, so left/right doesn't matter
+            # if lines[i][1:67] == code_hash:
+            #     kje = json.loads(lines[i][69:-2])
+            #
+            # A simple linear scan is ok
+            for line in fj:
+                t = line[1:67]
+                if   t >  code_hash: break
+                elif t == code_hash:
+                    kje = json.loads(line[69:-2])
+                    break
+            #
             if kje is None:
                 log.warning('Code hash', code_hash, 'not found in jump edges file')
             elif not kje:
-                log.info('Known jump list for code hash', code_hash, 'is empty')
+                log.warning('Known jump list for code hash', code_hash, 'is empty')
         #
         pick = {}
         if args.pick:
