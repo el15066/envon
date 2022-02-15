@@ -3,7 +3,7 @@ import os
 
 from IIT import get_opcode, regc_minmax, has_rd, uses_mem
 
-INVALID_REG     = 65535
+INVALID_REG     = 65000 # leave some room for temporaries (up to a few 100 are expected to ever be needed)
 BLOCK_ID_SHIFTS = 0
 
 def encode_bid(x):
