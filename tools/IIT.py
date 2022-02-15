@@ -63,6 +63,7 @@ IIT = {
     'BLOCKHASH':      (  77,  2,  2,  True, False ),
     'MLOAD':          (  78,  2,  2,  True,  True ),
     'STOUCH':         (  80,  1,  1, False, False ),
+    'COPY':           (  87,  2,  2,  True, False ),
     'NOT':            (  88,  2,  2,  True, False ),
     'ISZERO':         (  89,  2,  2,  True, False ),
     'ADD':            (  96,  3,  3,  True, False ),
