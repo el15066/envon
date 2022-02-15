@@ -27,6 +27,7 @@ def print_instructions(output_file, analysis, selections):
     #
     print_calc_with_jumps(output_file, analysis, vs)
 
+
 class MarkedONsUpdateContext:
 
     def __init__(self):
@@ -157,8 +158,10 @@ def print_calc_with_jumps(fo, analysis, vs):
         # Topologically sort the PHIs
         # The definition must come *after* the use (successor), because PHIs need to get the previous iteration's values.
         #
-        phi_ons_map = { on: i for i, (on, _) in enumerate(phi_ons) }
-        #
+        phi_ons_map = {
+            on: i
+            for i, (on, _) in enumerate(phi_ons)
+        }
         _sort, _rm  = topo_sort_dfs(
             count         = len(phi_ons),
             getSuccessors = lambda i: [ phi_ons_map.get(on2, -1) for on2 in phi_ons[i][1][1] ],
@@ -199,7 +202,7 @@ def print_calc_with_jumps(fo, analysis, vs):
         #
         c = None
         for on, c in all_ons:
-            fo.write(f'{on:3} = ' + (f'#{c:x}' if type(c) is int else c[0] + ''.join(f' {j}' for j in c[1])) + '\n')
+            fo.write(f'{on:5} = ' + (f'#{c:x}' if type(c) is int else c[0] + ''.join(f' {j}' for j in c[1])) + '\n')
         #
         last_was_jump = type(c) is tuple and c[0] == 'JUMP'
         #
@@ -210,8 +213,8 @@ def print_calc_with_jumps(fo, analysis, vs):
         #
         if not last_was_jump and bs[block_i+1] != expect_b:
             if expect_b and expect_b.marked:
-                fo.write(f'  0 = #{expect_b.offset:x}\n')
-                fo.write( '  0 = JUMP 0\n')
+                fo.write(f'    0 = #{expect_b.offset:x}\n')
+                fo.write( '    0 = JUMP 0\n')
             else:
                 fo.write('STOP\n')
     #
