@@ -2,7 +2,7 @@
 from itertools import chain
 
 from envon.analysis.Valuation import is_valuation, latest_origin_valuation
-from envon.helpers            import Log, count, loop_guard, LoopGuardException, PlaceholderSet
+from envon.helpers            import Log, count, topo_sort_dfs_rev, loop_guard, LoopGuardException, PlaceholderSet
 from envon.analysis.optimize  import general_worklist, mark_blocks, mark_by_valuation
 from envon.graph              import make_graph_file, make_graph_ons_file
 
@@ -132,15 +132,54 @@ def print_calc_with_jumps(fo, analysis, vs):
     #
     bs = [b for b in analysis if b.marked]
     bs.append(None)
-    for i in range(len(bs)-1):
-        b = bs[i]
+    for block_i in range(len(bs)-1):
+        b = bs[block_i]
         #
         if b == entry_b: fo.write(repr(b) + ' | ENTRY\n')
         else:            fo.write(repr(b) + ' | ' + ' '.join((repr(b2) for b2 in b.in_edges())) + '\n')
         #
-        c = None
+        # Split the ons in ints/phi/non-phi for easier processing
+        int_ons  = []
+        phi_ons  = []
+        rest_ons = []
         for on in b.marked_ons:
             c = ctx.on_calcs[on]
+            if   type(c) is int:      int_ons.append((on, c))
+            elif      c[0] == 'PHI':  phi_ons.append((on, c))
+            else:                    rest_ons.append((on, c))
+        #
+        # Topologically sort the PHIs
+        # The definition must come *after* the use (successor), because PHIs need to get the previous iteration's values.
+        #
+        phi_ons_map = { on: i for i, (on, _) in enumerate(phi_ons) }
+        #
+        _sort, _rm = topo_sort_dfs_rev(
+            count         = len(phi_ons),
+            getSuccessors = lambda i: [ phi_ons_map.get(on2, -1) for on2 in phi_ons[i][1][1] ],
+        )
+        if _rm:
+            # Break the 1 possible loop in the PHI matrix (caused by swaps)
+            assert len(_rm) == 1, _rm
+            #
+            use_i,  def_i = _rm[0]
+            use_on, use_c = phi_ons[use_i]
+            def_on,    _  = phi_ons[def_i]
+            #
+            # The cycle causes def to come before the use (backward edge),
+            # so we need to copy the def's old value to a temporary (on=0),
+            # and modify the use to use the temporary instead.
+            fo.write(f'  0 = {def_on}\n')
+            new_use_c      = use_c[0], tuple(on if on != def_on else 0 for on in use_c[1])
+            phi_ons[use_i] = use_on, new_use_c
+            #
+            log.debug('Block', b, 'had cycle in phi ons: def_on', def_on, 'use_on', use_on, 'use_c', use_c, 'new_use_c', new_use_c)
+        #
+        all_ons = int_ons # will modify
+        all_ons.extend([phi_ons[i] for i in _sort])
+        all_ons.extend(rest_ons)
+        #
+        c = None
+        for on, c in all_ons:
             fo.write(f'{on:3} = ' + (f'#{c:x}' if type(c) is int else c[0] + ''.join(f' {j}' for j in c[1])) + '\n')
         #
         last_was_jump = type(c) is tuple and c[0] == 'JUMP'
@@ -150,7 +189,7 @@ def print_calc_with_jumps(fo, analysis, vs):
         elif count(b.jump_edges()) == 1: expect_b = tuple(b.jump_edges())[0]
         else:                            expect_b = None
         #
-        if not last_was_jump and bs[i+1] != expect_b:
+        if not last_was_jump and bs[block_i+1] != expect_b:
             if expect_b and expect_b.marked:
                 fo.write(f'  0 = #{expect_b.offset:x}\n')
                 fo.write( '  0 = JUMP 0\n')

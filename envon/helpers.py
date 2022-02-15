@@ -92,3 +92,41 @@ class _PlaceholderSet:
     def __or__( self, other): return other.copy()
 
 PlaceholderSet = _PlaceholderSet()
+
+
+# Topologically sort a directed graph using DFS
+# Some edges that are part of a cycle will be ignored and returned,
+# so that the rest of the graph is a DAG.
+# The guarantee is that:
+#  res[j+1] is not a successort of res[j]
+#  if the edges (i1, i2) in remove are deleted from the graph
+# Notice how `res` is given in reverse
+def topo_sort_dfs_rev(count, getSuccessors):
+    res    = []
+    remove = []
+    opened = [False] * count
+    closed = [False] * count
+    todo   = list(range(count))
+    while todo:
+        i = todo[-1]
+        #
+        if opened[i]:
+            todo.pop()
+            if not closed[i]: res.append(i)
+            closed[i] = True
+            continue
+        #
+        opened[i] = True
+        #
+        for i2 in getSuccessors(i):
+            if i2 < 0:     continue
+            if closed[i2]: continue
+            if opened[i2]: remove.append((i, i2))
+            else:            todo.append(i2)
+        #
+    return res, remove
+
+def topo_sort_dfs(count, getSuccessors):
+    res, remove = topo_sort_dfs_rev(count, getSuccessors)
+    res.reverse()
+    return res, remove
