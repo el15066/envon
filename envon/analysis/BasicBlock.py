@@ -61,8 +61,15 @@ class BasicBlock:
     def fallthrough_edge(self):
         return self._fallthrough_edge
 
+    def marked_fallthrough_edge(self):
+        e = self._fallthrough_edge
+        return e if e is not None and e.marked else None
+
     def jump_edges(self):
         return iter(self._jump_edges) # TODO: maybe frozenset?
+
+    def marked_jump_edges(self):
+        return [e for e in self._jump_edges if e.marked]
 
     def out_edges(self):
         res = []
@@ -152,3 +159,6 @@ class BasicBlock:
             len(self._jump_edges) >  1 or
             len(self._jump_edges) == 1 and self._fallthrough_edge is not None
         )
+
+    def has_multiple_marked_out_edges(self):
+        return sum(e.marked for e in self.out_edges()) > 1

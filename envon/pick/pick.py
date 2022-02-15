@@ -110,7 +110,7 @@ def print_calc_with_jumps(fo, analysis, vs):
     jumps = set()
     for b in analysis:
         if b.marked:
-            if b.has_multiple_out_edges():
+            if b.has_multiple_marked_out_edges():
                 jumps.add(b.get_jump())
     jumps.discard(None)
     mark_by_valuation(n.valuation for n in jumps)
@@ -195,7 +195,7 @@ def print_calc_with_jumps(fo, analysis, vs):
             new_use_c      = use_c[0], tuple(on if on != def_on else new_on for on in use_c[1])
             phi_ons[use_i] = use_on, new_use_c
             #
-            log.info('Block', b, 'had cycle in phi ons: new_on', new_on,'def_on', def_on, 'use_on', use_on, 'use_c', use_c, 'new_use_c', new_use_c)
+            log.debug('Block', b, 'had cycle in phi ons: new_on', new_on,'def_on', def_on, 'use_on', use_on, 'use_c', use_c, 'new_use_c', new_use_c)
         #
         all_ons.extend([phi_ons[i] for i in _sort])
         all_ons.extend(rest_ons)
@@ -206,10 +206,9 @@ def print_calc_with_jumps(fo, analysis, vs):
         #
         last_was_jump = type(c) is tuple and c[0] == 'JUMP'
         #
-        # TODO: refactor
-        if         b.fallthrough_edge(): expect_b =       b.fallthrough_edge()
-        elif count(b.jump_edges()) == 1: expect_b = tuple(b.jump_edges())[0]
-        else:                            expect_b = None
+        if       b.marked_fallthrough_edge(): expect_b = b.marked_fallthrough_edge()
+        elif len(b.marked_jump_edges()) == 1: expect_b = b.marked_jump_edges()[0]
+        else:                                 expect_b = None
         #
         if not last_was_jump and bs[block_i+1] != expect_b:
             if expect_b and expect_b.marked:
