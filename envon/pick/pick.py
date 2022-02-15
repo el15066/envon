@@ -2,11 +2,13 @@
 from itertools import chain
 
 from envon.analysis.Valuation import is_valuation, latest_origin_valuation
-from envon.helpers            import Log, count, topo_sort_dfs_rev, loop_guard, LoopGuardException, PlaceholderSet
+from envon.helpers            import Log, count, topo_sort_dfs, loop_guard, LoopGuardException, PlaceholderSet
 from envon.analysis.optimize  import general_worklist, mark_blocks, mark_by_valuation
 from envon.graph              import make_graph_file, make_graph_ons_file
 
 log = Log(__name__)
+
+MAX_ON_COUNT = 65536
 
 def print_instructions(output_file, analysis, selections):
     vs = []
@@ -138,6 +140,8 @@ def print_calc_with_jumps(fo, analysis, vs):
         if b == entry_b: fo.write(repr(b) + ' | ENTRY\n')
         else:            fo.write(repr(b) + ' | ' + ' '.join((repr(b2) for b2 in b.in_edges())) + '\n')
         #
+        last_on = MAX_ON_COUNT # used for temporaries
+        #
         # Split the ons in ints/phi/non-phi for easier processing
         int_ons  = []
         phi_ons  = []
@@ -148,33 +152,48 @@ def print_calc_with_jumps(fo, analysis, vs):
             elif      c[0] == 'PHI':  phi_ons.append((on, c))
             else:                    rest_ons.append((on, c))
         #
+        all_ons = int_ons # will modify
+        #
         # Topologically sort the PHIs
         # The definition must come *after* the use (successor), because PHIs need to get the previous iteration's values.
         #
         phi_ons_map = { on: i for i, (on, _) in enumerate(phi_ons) }
         #
-        _sort, _rm = topo_sort_dfs_rev(
+        _sort, _rm  = topo_sort_dfs(
             count         = len(phi_ons),
             getSuccessors = lambda i: [ phi_ons_map.get(on2, -1) for on2 in phi_ons[i][1][1] ],
         )
-        if _rm:
-            # Break the 1 possible loop in the PHI matrix (caused by swaps)
-            assert len(_rm) == 1, _rm
+        # Swaps can cause cycles in the PHI matrix, which break the topo sort.
+        # The same happens if there are multiple in-edges to this block, with different stack depths, that loop in the CFG.
+        # The algorithm picks some edges (_rm) and allows them to go backwards.
+        # We need to use tempoary registers to handle these edges/cycles,
+        # which effectively implements said swaps.
+        # There are up to n * d - n - 1 possible back-edges in _rm,
+        # where n is len(phi_ons) and d is len(phi) == len(b.in_edges).
+        mapped = {}
+        for use_i, def_i in set(_rm):
             #
-            use_i,  def_i = _rm[0]
+            # filter self-loops
+            if use_i == def_i: continue
+            #
             use_on, use_c = phi_ons[use_i]
             def_on,    _  = phi_ons[def_i]
             #
             # The cycle causes def to come before the use (backward edge),
             # so we need to copy the def's old value to a temporary (on=0),
-            # and modify the use to use the temporary instead.
-            fo.write(f'  0 = {def_on}\n')
-            new_use_c      = use_c[0], tuple(on if on != def_on else 0 for on in use_c[1])
+            # and modify the use to use a temporary instead.
+            new_on = mapped.get(def_on)
+            if new_on is None:
+                last_on -= 1
+                new_on   = last_on
+                all_ons.append((new_on, ('COPY', (def_on,))))
+                mapped[def_on] = new_on
+            #
+            new_use_c      = use_c[0], tuple(on if on != def_on else new_on for on in use_c[1])
             phi_ons[use_i] = use_on, new_use_c
             #
-            log.debug('Block', b, 'had cycle in phi ons: def_on', def_on, 'use_on', use_on, 'use_c', use_c, 'new_use_c', new_use_c)
+            log.info('Block', b, 'had cycle in phi ons: new_on', new_on,'def_on', def_on, 'use_on', use_on, 'use_c', use_c, 'new_use_c', new_use_c)
         #
-        all_ons = int_ons # will modify
         all_ons.extend([phi_ons[i] for i in _sort])
         all_ons.extend(rest_ons)
         #
