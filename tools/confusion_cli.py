@@ -98,16 +98,16 @@ def main(fa, fp):
         totals[3] += c
         if a > 100000 or a-c > 30000 or p-c > 30000:
             print('--- Contract ' + k)
-            print(f'  Coverage: {100*  c  /a if a else -1 :5.1f} %  missed: {a-c:7}')
-            print(f'  Overhead: {100*(p-c)/a if a else -1 :5.0f} %  added:  {p-c:7}')
-            print(f'  Count:    {               a              :7}  txs:    {txs:7}')
+            print(f'  Coverage: {100*  c  /a if a else -1 :7.1f} %  missed: {a-c:9}')
+            print(f'  Overhead: {100*(p-c)/a if a else -1 :7.0f} %  added:  {p-c:9}')
+            print(f'  Count:    {               a              :9}  txs:    {txs:9}')
             print()
     #
     [txs, p, a, c] = totals
     print('--- Totals ---')
-    print(f'  Coverage: {100*  c  /a if a else -1 :5.1f} %  missed: {a-c:7}')
-    print(f'  Overhead: {100*(p-c)/a if a else -1 :5.0f} %  added:  {p-c:7}')
-    print(f'  Count:    {               a              :7}  txs:    {txs:7}')
+    print(f'  Coverage: {100*  c  /a if a else -1 :7.1f} %  missed: {a-c:9}')
+    print(f'  Overhead: {100*(p-c)/a if a else -1 :7.0f} %  added:  {p-c:9}')
+    print(f'  Count:    {               a              :9}  txs:    {txs:9}')
     print()
 
 
