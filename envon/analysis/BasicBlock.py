@@ -160,5 +160,6 @@ class BasicBlock:
             len(self._jump_edges) == 1 and self._fallthrough_edge is not None
         )
 
-    def has_multiple_marked_out_edges(self):
-        return sum(e.marked for e in self.out_edges()) > 1
+    def has_multiple_out_edges_at_least_1_marked(self):
+        oes = self.out_edges()
+        return len(oes) > 1 and sum(e.marked for e in oes) > 0

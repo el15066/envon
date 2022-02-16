@@ -110,7 +110,8 @@ def print_calc_with_jumps(fo, analysis, vs):
     jumps = set()
     for b in analysis:
         if b.marked:
-            if b.has_multiple_marked_out_edges():
+            if b.has_multiple_out_edges_at_least_1_marked():
+                # TODO: if it is JUMPI, we might be able to one_arg_form it first
                 jumps.add(b.get_jump())
     jumps.discard(None)
     mark_by_valuation(n.valuation for n in jumps)
@@ -204,18 +205,25 @@ def print_calc_with_jumps(fo, analysis, vs):
         for on, c in all_ons:
             fo.write(f'{on:5} = ' + (f'#{c:x}' if type(c) is int else c[0] + ''.join(f' {j}' for j in c[1])) + '\n')
         #
-        last_was_jump = type(c) is tuple and c[0] == 'JUMP'
-        #
-        if       b.marked_fallthrough_edge(): expect_b = b.marked_fallthrough_edge()
-        elif len(b.marked_jump_edges()) == 1: expect_b = b.marked_jump_edges()[0]
-        else:                                 expect_b = None
-        #
-        if not last_was_jump and bs[block_i+1] != expect_b:
-            if expect_b and expect_b.marked:
-                fo.write(f'    0 = #{expect_b.offset:x}\n')
-                fo.write( '    0 = JUMP 0\n')
+        # TODO: move the following earlier in the process, so we don't write directly to file
+        # We need to create a new JUMP, if both:
+        #  - last instruction does not stop fallthrough
+        #  - the next block is not the one we want to go to
+        if not stops_fallthrough(c):
+            #
+            ft = b.marked_fallthrough_edge()
+            if ft is not None:
+                expect_b = ft
             else:
-                fo.write('STOP\n')
+                mjes     = b.marked_jump_edges()
+                expect_b = mjes[0] if len(mjes) == 1 else None # 1 single marked jump edge
+            #
+            if expect_b != bs[block_i+1]:
+                if expect_b is not None:
+                    fo.write(f'    0 = #{expect_b.offset:x}\n')
+                    fo.write( '    0 = JUMP 0\n')
+                else:
+                    fo.write('STOP\n')
     #
     res = set(
         ctx.on_map.get(v)
@@ -223,3 +231,6 @@ def print_calc_with_jumps(fo, analysis, vs):
     )
     res.discard(None)
     fo.write(repr(sorted(res)) + '\n')
+
+def stops_fallthrough(on_calc):
+    return type(on_calc) is tuple and on_calc[0] in ('JUMP', 'RETURN')
